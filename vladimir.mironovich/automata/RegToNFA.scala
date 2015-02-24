@@ -26,7 +26,7 @@ class DFA() extends NFA() {
     }
     result += "FS: "
     for (fs <- finalStates) {
-      result += "q" + finalState + " "
+      result += "q" + fs + " "
     }
 
     result
@@ -298,7 +298,7 @@ object NFA {
 
       if (s.contains(nfa.finalState)) {
         result.finalStates.add(nodeMap(s))
-        println(s)
+        println(s + " " + nodeMap(s))
       }
     }
 
