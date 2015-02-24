@@ -1,17 +1,37 @@
 import java.util
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
+
 
 object RegToNFA extends App {
 
-  val regExp = "a?"
+  val regExp = "(a|b)cde?"
   println(NFA.expandRegExpInput(regExp))
-  println(NFA.regExpToNFA(NFA.expandRegExpInput(regExp)))
-
+  val nfa = NFA.regExpToNFA(NFA.expandRegExpInput(regExp))
+  println(nfa)
+  println(NFA.determinize(nfa))
 
 }
 
 class Edge(val from : Int, val to : Int, val symbol : Char)
+
+class DFA() extends NFA() {
+  val finalStates = new mutable.HashSet[Int]()
+
+  override def toString(): String = {
+    var result : String = ""
+    for (trans : Edge <- edges) {
+      result += "q" + trans.from + " => " + "q" + trans.to + " : " + trans.symbol + "\n"
+    }
+    result += "FS: "
+    for (fs <- finalStates) {
+      result += "q" + finalState + " "
+    }
+
+    result
+  }
+}
 
 class NFA() {
 
@@ -50,7 +70,7 @@ object NFA {
     val x = regExp.charAt(0)
     val y = regExp.charAt(1)
     if ((isValue(x) || x == ')' || x == '*' || x == '?' || x == '+') && (isValue(y) || y == '(')) {
-      x + '.' + expandRegExpInput(regExp.tail)
+      x + "." + expandRegExpInput(regExp.tail)
 
     } else {
       x + expandRegExpInput(regExp.tail)
@@ -79,6 +99,7 @@ object NFA {
                 case '|' => operands.push(or(operands.pop(), operands.pop()))
               }
             }
+            operators.pop() //popping "("
           case '$' =>
             //backtrack until operators stack is empty
             while (operators.nonEmpty) {
@@ -178,7 +199,100 @@ object NFA {
     result
   }
 
+  def eClosure(nfa : NFA, stateId : Int) : mutable.ListBuffer[Int] = {
+    val result = mutable.ListBuffer[Int]()
+    val visited = new Array[Boolean](nfa.getSize())
+    for (i <- 0 until visited.size) {
+      visited(0) = false
+    }
+    val nodeQueue = new mutable.Queue[Int]()
+
+    nodeQueue.enqueue(stateId)
+    result.add(stateId)
+    while (nodeQueue.nonEmpty) {
+      val curr = nodeQueue.dequeue()
+      visited(curr) = true
+      for (edge : Edge <- nfa.edges) {
+        if (edge.from == curr && edge.symbol == '~') {
+          if (!visited(edge.to)) {
+            nodeQueue.enqueue(edge.to)
+            result.add(edge.to)
+          }
+        }
+      }
+
+
+    }
+
+
+    result.sorted
+  }
+
+  def eClosure(nfa : NFA, stateId : mutable.Set[Int]) : mutable.ListBuffer[Int] = {
+    var result = mutable.ListBuffer[Int]()
+    for (id <- stateId) {
+      result = result.union(eClosure(nfa, id))
+    }
+    result.sorted
+  }
+
+  def move(nfa : NFA, from : ListBuffer[Int], ch : Char) : mutable.Set[Int] = {
+    val result = mutable.Set[Int]()
+    for (edge : Edge <- nfa.edges) {
+      if (edge.symbol == ch && from.contains(edge.from)) {
+        result.add(edge.to)
+      }
+    }
+    result
+  }
+
+  def getAlphabet(nfa : NFA) : mutable.Set[Char] = {
+    val result = mutable.Set[Char]()
+
+    for (edge : Edge <- nfa.edges) {
+      if (isValue(edge.symbol)) {
+        result.add(edge.symbol)
+      }
+    }
+
+    result
+  }
+
   def determinize(nfa : NFA) : NFA = {
-    null
+    val nodeMap = new mutable.HashMap[mutable.ListBuffer[Int],Int]()
+    val alphabet = getAlphabet(nfa)
+    val processQueue = new mutable.Queue[mutable.ListBuffer[Int]]
+    val result = new DFA()
+    //val nodeVisited = new mutable.HashMap[mutable.ListBuffer[Int], Boolean]()
+    println(nodeMap.size)
+
+    //add eClosure of start to our nodeMap
+    processQueue.enqueue(eClosure(nfa,0))
+    nodeMap(eClosure(nfa,0)) = 0
+
+    while (processQueue.nonEmpty) {
+      val curr = processQueue.dequeue()
+      for (ch <- alphabet) {
+        val target = eClosure(nfa,move(nfa,curr,ch))
+        if (nodeMap.contains(target)) {
+          //that node already exists just add edge
+          result.addEdge(nodeMap(curr), nodeMap(target), ch)
+        } else {
+          //new node
+          nodeMap(target) = nodeMap.size
+          result.addEdge(nodeMap(curr), nodeMap(target), ch)
+          processQueue.enqueue(target)
+        }
+      }
+
+    }
+
+    for (s <- nodeMap.keySet) {
+      if (s.contains(nfa.finalState)) {
+        result.finalStates.add(nodeMap(s))
+      }
+    }
+
+    result
   }
 }
