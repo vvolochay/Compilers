@@ -6,7 +6,7 @@ import scala.collection.mutable.ListBuffer
 
 object RegToNFA extends App {
 
-  val regExp = "(a|b)cde?"
+  val regExp = "a"
   println(NFA.expandRegExpInput(regExp))
   val nfa = NFA.regExpToNFA(NFA.expandRegExpInput(regExp))
   println(nfa)
@@ -95,7 +95,9 @@ object NFA {
             //make backtrack operations until "("
             while (operators.top != '(') {
               operators.pop() match {
-                case '.' => operands.push(concat(operands.pop(), operands.pop()))
+                case '.' =>
+                  val a = operands.pop()
+                  operands.push(concat(operands.pop(), a))
                 case '|' => operands.push(or(operands.pop(), operands.pop()))
               }
             }
@@ -104,7 +106,9 @@ object NFA {
             //backtrack until operators stack is empty
             while (operators.nonEmpty) {
               operators.pop() match {
-                case '.' => operands.push(concat(operands.pop(), operands.pop()))
+                case '.' =>
+                  val a = operands.pop()
+                  operands.push(concat(operands.pop(), a))
                 case '|' => operands.push(or(operands.pop(), operands.pop()))
               }
             }
@@ -269,27 +273,32 @@ object NFA {
     //add eClosure of start to our nodeMap
     processQueue.enqueue(eClosure(nfa,0))
     nodeMap(eClosure(nfa,0)) = 0
+    println(eClosure(nfa,0))
 
     while (processQueue.nonEmpty) {
       val curr = processQueue.dequeue()
       for (ch <- alphabet) {
         val target = eClosure(nfa,move(nfa,curr,ch))
-        if (nodeMap.contains(target)) {
-          //that node already exists just add edge
-          result.addEdge(nodeMap(curr), nodeMap(target), ch)
-        } else {
-          //new node
-          nodeMap(target) = nodeMap.size
-          result.addEdge(nodeMap(curr), nodeMap(target), ch)
-          processQueue.enqueue(target)
+        if (target.size > 0) {
+          if (nodeMap.contains(target)) {
+            //that node already exists just add edge
+            result.addEdge(nodeMap(curr), nodeMap(target), ch)
+          } else {
+            //new node
+            nodeMap(target) = nodeMap.size
+            result.addEdge(nodeMap(curr), nodeMap(target), ch)
+            processQueue.enqueue(target)
+          }
         }
       }
 
     }
 
     for (s <- nodeMap.keySet) {
+
       if (s.contains(nfa.finalState)) {
         result.finalStates.add(nodeMap(s))
+        println(s)
       }
     }
 
