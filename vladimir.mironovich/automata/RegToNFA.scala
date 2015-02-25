@@ -5,23 +5,6 @@ import scala.collection.mutable.ListBuffer
 
 
 object RegToNFA extends App {
-
-  /*val regExp = "(a|b)cd(e|a+)"
-  println(NFA.expandRegExpInput(regExp))
-  val nfa = NFA.regExpToNFA(NFA.expandRegExpInput(regExp))
-  val dfa = NFA.determinize(nfa)
-  println(nfa)
-  println()
-  println(dfa)
-
-  println(DFA.check(dfa, 0, "aaa"))
-  println(DFA.check(dfa, 0, "acdaaaa"))
-  println(DFA.check(dfa, 0, "bcde"))
-  println(DFA.check(dfa, 0, "bcdea"))
-  println(DFA.check(dfa, 0, "bcd"))*/
-
-
-
   print("Enter regExp: ")
   var dfa = NFA.determinize(NFA.regExpToNFA(NFA.expandRegExpInput(scala.io.StdIn.readLine())))
 
@@ -148,6 +131,7 @@ object NFA {
           case '.' => operators.push(ch)
           case '|' => operators.push(ch)
           case '(' => operators.push(ch)
+          case '/' => operators.push(ch)
           case ')' =>
             //make backtrack operations until "("
             while (operators.top != '(') {
@@ -167,6 +151,10 @@ object NFA {
                   val a = operands.pop()
                   operands.push(concat(operands.pop(), a))
                 case '|' => operands.push(or(operands.pop(), operands.pop()))
+                case '/' =>
+                  var a = operands.pop()
+                  a = concat(operands.pop(), a)
+                  operands.push(or(value('~'),a))
               }
             }
         }
@@ -324,13 +312,10 @@ object NFA {
     val alphabet = getAlphabet(nfa)
     val processQueue = new mutable.Queue[mutable.ListBuffer[Int]]
     val result = new DFA()
-    //val nodeVisited = new mutable.HashMap[mutable.ListBuffer[Int], Boolean]()
-    //println(nodeMap.size)
 
     //add eClosure of start to our nodeMap
     processQueue.enqueue(eClosure(nfa,0))
     nodeMap(eClosure(nfa,0)) = 0
-    //println(eClosure(nfa,0))
 
     while (processQueue.nonEmpty) {
       val curr = processQueue.dequeue()
@@ -355,7 +340,6 @@ object NFA {
 
       if (s.contains(nfa.finalState)) {
         result.finalStates.add(nodeMap(s))
-        //println(s + " " + nodeMap(s))
       }
     }
 
