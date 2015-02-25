@@ -6,12 +6,44 @@ import scala.collection.mutable.ListBuffer
 
 object RegToNFA extends App {
 
-  val regExp = "a"
+  /*val regExp = "(a|b)cd(e|a+)"
   println(NFA.expandRegExpInput(regExp))
   val nfa = NFA.regExpToNFA(NFA.expandRegExpInput(regExp))
+  val dfa = NFA.determinize(nfa)
   println(nfa)
-  println(NFA.determinize(nfa))
+  println()
+  println(dfa)
 
+  println(DFA.check(dfa, 0, "aaa"))
+  println(DFA.check(dfa, 0, "acdaaaa"))
+  println(DFA.check(dfa, 0, "bcde"))
+  println(DFA.check(dfa, 0, "bcdea"))
+  println(DFA.check(dfa, 0, "bcd"))*/
+
+
+
+  print("Enter regExp: ")
+  var dfa = NFA.determinize(NFA.regExpToNFA(NFA.expandRegExpInput(scala.io.StdIn.readLine())))
+
+  println("DFA: ")
+  println(dfa)
+
+  println("\"@reg %regExp%\" builds new automata")
+  println("\"@exit\" closes")
+  println("any other words gets checked")
+  var work = true
+  while (work) {
+    val line = scala.io.StdIn.readLine()
+    if (line == "@exit") {
+      work = false
+    } else if (line.startsWith("@reg")) {
+      dfa = NFA.determinize(NFA.regExpToNFA(NFA.expandRegExpInput(line.split("\\s")(1))))
+      println("DFA: ")
+      println(dfa)
+    } else {
+      println(line + " - " + (if (DFA.check(dfa,0,line)) "accepted" else "error"))
+    }
+  }
 }
 
 class Edge(val from : Int, val to : Int, val symbol : Char)
@@ -30,6 +62,28 @@ class DFA() extends NFA() {
     }
 
     result
+  }
+}
+
+object DFA {
+
+  def check(dfa : DFA, stateId : Int, str : String): Boolean = {
+    if (str.length == 0 && dfa.finalStates.contains(stateId)) {
+      true
+    } else if (str.length == 0) {
+      false
+    } else {
+      var next = -1
+      var i = 0
+      while (next == -1 && i < dfa.edges.size) {
+        //dfa, only one possible next state
+        if (dfa.edges(i).from == stateId && dfa.edges(i).symbol == str.charAt(0)) {
+          next = dfa.edges(i).to
+        }
+        i += 1
+      }
+      if (next != -1) check(dfa, next, str.tail) else false
+    }
   }
 }
 
@@ -88,6 +142,9 @@ object NFA {
         ch match {
           case '*' => operands.push(kleene(operands.pop()))
           case '?' => operands.push(maybe(operands.pop()))
+          case '+' =>
+            val a = operands.pop()
+            operands.push(concat(a,kleene(a)))
           case '.' => operators.push(ch)
           case '|' => operators.push(ch)
           case '(' => operators.push(ch)
@@ -262,18 +319,18 @@ object NFA {
     result
   }
 
-  def determinize(nfa : NFA) : NFA = {
+  def determinize(nfa : NFA) : DFA = {
     val nodeMap = new mutable.HashMap[mutable.ListBuffer[Int],Int]()
     val alphabet = getAlphabet(nfa)
     val processQueue = new mutable.Queue[mutable.ListBuffer[Int]]
     val result = new DFA()
     //val nodeVisited = new mutable.HashMap[mutable.ListBuffer[Int], Boolean]()
-    println(nodeMap.size)
+    //println(nodeMap.size)
 
     //add eClosure of start to our nodeMap
     processQueue.enqueue(eClosure(nfa,0))
     nodeMap(eClosure(nfa,0)) = 0
-    println(eClosure(nfa,0))
+    //println(eClosure(nfa,0))
 
     while (processQueue.nonEmpty) {
       val curr = processQueue.dequeue()
@@ -298,7 +355,7 @@ object NFA {
 
       if (s.contains(nfa.finalState)) {
         result.finalStates.add(nodeMap(s))
-        println(s + " " + nodeMap(s))
+        //println(s + " " + nodeMap(s))
       }
     }
 
