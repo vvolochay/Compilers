@@ -88,7 +88,7 @@ Vars            : var                           { [$1] }
                 | var ',' Vars                  { $1:$3 }
 
 Stmts           : {- empty -}                   { [] }
-                | Stmt ';' Stmts                { $1:$3 }
+                | Stmt Stmts                { $1:$2 }
 
 FuncDef         : var var '(' FuncArgs ')' '{' Stmts '}'        { FunctionDefinition $1 $2 $4 $7 }
 
