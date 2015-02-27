@@ -1,0 +1,14 @@
+
+int summ(int n)
+{
+    int i;
+    int sum;
+    i = 0;
+    sum = 0;
+    while (i < n)
+    {
+        sum = sum + i;
+        i = i + 1;
+    }
+    return sum;
+}
