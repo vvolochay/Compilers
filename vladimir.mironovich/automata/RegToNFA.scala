@@ -6,21 +6,31 @@ import scala.collection.mutable.ListBuffer
 
 object RegToNFA extends App {
   print("Enter regExp: ")
-  var dfa = NFA.determinize(NFA.regExpToNFA(NFA.expandRegExpInput(scala.io.StdIn.readLine())))
+  var nfa = NFA.regExpToNFA(NFA.expandRegExpInput(scala.io.StdIn.readLine()))
+  var dfa = NFA.determinize(nfa)
 
-  println("DFA: ")
-  println(dfa)
+  //println("DFA: ")
+  //println(dfa)
 
   println("\"@reg %regExp%\" builds new automata")
   println("\"@exit\" closes")
+  println("\"@dfa\" prints DFA")
+  println("\"@nfa\" prints NFA")
   println("any other words gets checked")
   var work = true
   while (work) {
     val line = scala.io.StdIn.readLine()
     if (line == "@exit") {
       work = false
+    } else if (line == "@dfa") {
+      println("DFA: ")
+      println(dfa)
+    } else if (line == "@nfa") {
+      println("NFA: ")
+      println(nfa)
     } else if (line.startsWith("@reg")) {
-      dfa = NFA.determinize(NFA.regExpToNFA(NFA.expandRegExpInput(line.split("\\s")(1))))
+      nfa = NFA.regExpToNFA(NFA.expandRegExpInput(line.split("\\s")(1)))
+      dfa = NFA.determinize(nfa)
       println("DFA: ")
       println(dfa)
     } else {
