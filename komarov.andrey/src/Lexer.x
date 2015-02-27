@@ -34,8 +34,12 @@ tokens :-
        "="                      { \_ -> TokenAssign }
        ";"                      { \_ -> TokenSemicolon }
        "if"                     { \_ -> TokenIf }
+       "else"                   { \_ -> TokenElse }
        "while"                  { \_ -> TokenWhile }
        "return"                 { \_ -> TokenReturn }
+       "true"                   { \_ -> TokenTrue }
+       "false"                  { \_ -> TokenFalse }
+       ","                      { \_ -> TokenComma }
        $alpha+                  { \s -> TokenVar s }
 
 {
@@ -62,8 +66,12 @@ data Token = TokenNum Int
            | TokenAssign
            | TokenSemicolon
            | TokenIf
+           | TokenElse
            | TokenWhile
            | TokenReturn
+           | TokenTrue
+           | TokenFalse
+           | TokenComma
            deriving (Eq, Show)
 
 scanTokens = alexScanTokens
