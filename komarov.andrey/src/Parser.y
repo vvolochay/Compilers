@@ -20,8 +20,6 @@ import AST
         '+'             { TokenAdd }
         '-'             { TokenSub }
         '*'             { TokenMul }
-        '/'             { TokenDiv }
-        '%'             { TokenMod }
         '<'             { TokenLess }
         '>'             { TokenGreater }
         '=='            { TokenEqual }
@@ -46,7 +44,7 @@ import AST
 %left '||' '&&'
 %left '<' '>' '<=' '>=' '==' '!='
 %left '+' '-'
-%left '*' '/' '%'
+%left '*'
 
 %%
 
@@ -60,8 +58,6 @@ Expr            : var                           { EVar $1 }
                 | Expr '+' Expr                 { EAdd $1 $3 }
                 | Expr '-' Expr                 { ESub $1 $3 }
                 | Expr '*' Expr                 { EMul $1 $3 }
-                | Expr '/' Expr                 { EDiv $1 $3 }
-                | Expr '%' Expr                 { EMod $1 $3 }
                 | Expr '<' Expr                 { ELess $1 $3 }
                 | Expr '>' Expr                 { EGreater $1 $3 }
                 | Expr '==' Expr                { EEqual $1 $3 }

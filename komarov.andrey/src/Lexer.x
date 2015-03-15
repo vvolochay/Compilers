@@ -21,8 +21,6 @@ tokens :-
        "+"                      { \_ -> TokenAdd }
        "-"                      { \_ -> TokenSub }
        "*"                      { \_ -> TokenMul }
-       "/"                      { \_ -> TokenDiv }
-       "%"                      { \_ -> TokenMod }
        "<"                      { \_ -> TokenLess }
        ">"                      { \_ -> TokenGreater }
        "=="                     { \_ -> TokenEqual }
@@ -53,8 +51,6 @@ data Token = TokenNum Int
            | TokenAdd
            | TokenSub
            | TokenMul
-           | TokenDiv
-           | TokenMod
            | TokenLess
            | TokenGreater
            | TokenEqual

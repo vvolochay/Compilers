@@ -24,7 +24,6 @@ data Statement = Block [Statement]
                | VariableDeclaration Type [Id]
                | Assignment Id Expresstion
                | RawExpression Expresstion
-               | IfThen Expresstion Statement
                | IfThenElse Expresstion Statement Statement
                | While Expresstion Statement
                | Return Expresstion
@@ -36,8 +35,6 @@ data Expresstion = EVar Id
                  | EAdd Expresstion Expresstion
                  | ESub Expresstion Expresstion
                  | EMul Expresstion Expresstion
-                 | EDiv Expresstion Expresstion
-                 | EMod Expresstion Expresstion
                  | ELess Expresstion Expresstion
                  | EGreater Expresstion Expresstion
                  | EEqual Expresstion Expresstion
