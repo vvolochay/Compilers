@@ -3,7 +3,7 @@ module AST (
   Program(..),
   FunctionDefinition(..),
   Statement(..),
-  Expresstion(..)
+  Expression(..)
   ) where
 
 type Id = String
@@ -22,26 +22,26 @@ data FunctionDefinition = FunctionDefinition
 
 data Statement = Block [Statement]
                | VariableDeclaration Type [Id]
-               | Assignment Id Expresstion
-               | RawExpression Expresstion
-               | IfThenElse Expresstion Statement Statement
-               | While Expresstion Statement
-               | Return Expresstion
+               | Assignment Id Expression
+               | RawExpression Expression
+               | IfThenElse Expression Statement Statement
+               | While Expression Statement
+               | Return Expression
                deriving (Show, Eq, Ord)
 
-data Expresstion = EVar Id
+data Expression = EVar Id
                  | EInt Int
                  | EBool Bool
-                 | EAdd Expresstion Expresstion
-                 | ESub Expresstion Expresstion
-                 | EMul Expresstion Expresstion
-                 | ELess Expresstion Expresstion
-                 | EGreater Expresstion Expresstion
-                 | EEqual Expresstion Expresstion
-                 | ELessEq Expresstion Expresstion
-                 | EGreaterEq Expresstion Expresstion
-                 | ENotEqual Expresstion Expresstion
-                 | EAnd Expresstion Expresstion
-                 | EOr Expresstion Expresstion
-                 | ECall Id [Expresstion]
+                 | EAdd Expression Expression
+                 | ESub Expression Expression
+                 | EMul Expression Expression
+                 | ELess Expression Expression
+                 | EGreater Expression Expression
+                 | EEqual Expression Expression
+                 | ELessEq Expression Expression
+                 | EGreaterEq Expression Expression
+                 | ENotEqual Expression Expression
+                 | EAnd Expression Expression
+                 | EOr Expression Expression
+                 | ECall Id [Expression]
                  deriving (Show, Eq, Ord)
