@@ -6,7 +6,7 @@ module TypedAST (
 
   ) where
 
-import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Error
 import Control.Applicative
 
@@ -40,31 +40,31 @@ data TypecheckError = UnknownVar Id
 instance Error TypecheckError where
   strMsg = SomethingWentWrong 
 
-newtype Typechecker a = Typechecker { unCompiler :: ErrorT TypecheckError (Reader Env) a } deriving (Functor, Applicative, Monad, MonadReader Env, MonadError TypecheckError)
+newtype Typechecker a = Typechecker { unCompiler :: ErrorT TypecheckError (State Env) a } deriving (Functor, Applicative, Monad, MonadState Env, MonadError TypecheckError)
 
 class Typecheckable a b | a -> b where
   typecheck :: a -> Typechecker b
 
 getVarType :: Id -> Typechecker Type
 getVarType name = do
-  vars <- asks variables
+  vars <- gets variables
   case M.lookup name vars of
    Nothing -> throwError $ UnknownVar name
    Just t -> return t
 
 getFunType :: Id -> Typechecker FType
 getFunType name = do
-  funs <- asks functions
+  funs <- gets functions
   case M.lookup name funs of
    Nothing -> throwError $ UnknownFun name
    Just t -> return t
 
-updateVar :: Id -> Type -> Typechecker Env
+updateVar :: Id -> Type -> Typechecker ()
 updateVar name t = do
-  env <- ask
+  env <- get
   let vars = variables env
   case M.lookup name vars of
-   Nothing -> return $ env { variables = M.insert name t vars }
+   Nothing -> put $ env { variables = M.insert name t vars }
    Just t' -> throwError $ AlreadyBound name
 
 expect :: Typecheckable t Type => Type -> t -> Typechecker ()
@@ -72,7 +72,7 @@ expect x ta = do
   a <- typecheck ta
   when (a /= x) $ throwError $ TypeMismatch a x
 
-parseType :: AST.Id -> Typecheckable Type
+parseType :: AST.Id -> Typechecker Type
 parseType "int" = return TInt
 parseType "bool" = return TBool
 parseType "string" = return TString
@@ -119,8 +119,11 @@ instance Typecheckable AST.Expression Type where
     return ret
 
 instance Typecheckable AST.Statement () where
-  typecheck (AST.SBlock stmts) = forM_ stmts typecheck
+  typecheck (AST.SBlock stmts) = do
+    s <- get
+    forM_ stmts typecheck
+    put s
   typecheck (AST.SVarDecl tp name) = do
     t <- parseType tp
-    env' <- updateVar name t
-    _
+    updateVar name t
+    
