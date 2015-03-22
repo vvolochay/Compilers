@@ -3,7 +3,9 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleContexts #-}
 module TypedAST (
-
+  Typechecker(..),
+  Typecheckable(..),
+  TypecheckError(..)
   ) where
 
 import Control.Monad.State
@@ -32,7 +34,8 @@ data Env = Env {
 data TypecheckError = UnknownVar Id
                     | UnknownFun Id
                     | UnknownType AST.Id
-                    | AlreadyBound Id
+                    | AlreadyBoundVar Id
+                    | AlreadyBoundFun Id
                     | TypeMismatch Type Type
                     | SomethingWentWrong String
                     deriving (Show)
@@ -65,7 +68,15 @@ updateVar name t = do
   let vars = variables env
   case M.lookup name vars of
    Nothing -> put $ env { variables = M.insert name t vars }
-   Just t' -> throwError $ AlreadyBound name
+   Just t' -> throwError $ AlreadyBoundVar name
+
+updateFun :: Id -> FType -> Typechecker ()
+updateFun name t = do
+  env <- get
+  let funs = functions env
+  case M.lookup name funs of
+   Nothing -> put $ env { functions = M.insert name t funs }
+   Just t' -> throwError $ AlreadyBoundFun name
 
 expect :: Typecheckable t Type => Type -> t -> Typechecker ()
 expect x ta = do
@@ -115,7 +126,7 @@ instance Typecheckable AST.Expression Type where
   typecheck (AST.EOr lhs rhs) =
     expect TBool lhs >> expect TBool rhs >> return TBool
   typecheck (AST.ECall name args) = do
-    targs <- forM args typecheck
+    targs <- mapM typecheck args
     FType ret targs' <- getFunType name
     forM (zip targs targs') $ \(t, t') ->
       ensureSame t t'
@@ -124,11 +135,10 @@ instance Typecheckable AST.Expression Type where
 instance Typecheckable AST.Statement () where
   typecheck (AST.SBlock stmts) = do
     s <- get
-    forM_ stmts typecheck
+    mapM typecheck stmts
     put s
-  typecheck (AST.SVarDecl tp name) = do
-    t <- parseType tp
-    updateVar name t
+  typecheck (AST.SVarDecl tp name) =
+    parseType tp >>= updateVar name
   typecheck (AST.SAssignment name expr) = do
     tl <- getVarType name
     tr <- typecheck expr
@@ -139,3 +149,24 @@ instance Typecheckable AST.Statement () where
   typecheck (AST.SWhile cond body) =
     expect TBool cond >> typecheck body
   typecheck (AST.SReturn e) = void $ typecheck e
+
+instance Typecheckable AST.TopLevel () where
+  typecheck (AST.VarDecl tp name) =
+    parseType tp >>= updateVar name
+  typecheck (AST.ForwardDecl name ret argsTypes) = do
+    tret <- parseType ret
+    targs <- mapM parseType argsTypes
+    updateFun name (FType tret targs)
+  typecheck (AST.FuncDef name ret args body) = do
+    tret <- parseType ret
+    targs <- mapM parseType (map fst args)
+    updateFun name (FType tret targs)
+    env <- get
+    forM (zip targs (map snd args)) $ \(t, name) ->
+      updateVar name t
+    mapM typecheck body
+    put env
+
+instance Typecheckable AST.Program () where
+  typecheck (AST.Program xs) = mapM_ typecheck xs
+
