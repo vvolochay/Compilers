@@ -1,4 +1,4 @@
-int f(int, int);
+int f(int a, int b);
 
 void g() {
     f(0, 1 == 2);
