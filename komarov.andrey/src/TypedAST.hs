@@ -5,7 +5,8 @@
 module TypedAST (
   Typechecker(..),
   Typecheckable(..),
-  TypecheckError(..)
+  TypecheckError(..),
+  runTypecheck,
   ) where
 
 import Control.Monad.State
@@ -31,6 +32,9 @@ data Env = Env {
   variables :: M.Map Id Type
   }
 
+emptyEnv :: Env
+emptyEnv = Env M.empty M.empty
+
 data TypecheckError = UnknownVar Id
                     | UnknownFun Id
                     | UnknownType AST.Id
@@ -43,7 +47,10 @@ data TypecheckError = UnknownVar Id
 instance Error TypecheckError where
   strMsg = SomethingWentWrong 
 
-newtype Typechecker a = Typechecker { unCompiler :: ErrorT TypecheckError (State Env) a } deriving (Functor, Applicative, Monad, MonadState Env, MonadError TypecheckError)
+newtype Typechecker a = Typechecker { unTypechecker :: ErrorT TypecheckError (State Env) a } deriving (Functor, Applicative, Monad, MonadState Env, MonadError TypecheckError)
+
+runTypecheck :: AST.Program -> Either TypecheckError ()
+runTypecheck prog = evalState (runErrorT $ unTypechecker $ typecheck prog) emptyEnv
 
 class Typecheckable a b | a -> b where
   typecheck :: a -> Typechecker b
