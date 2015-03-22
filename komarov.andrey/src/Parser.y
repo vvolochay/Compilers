@@ -59,7 +59,7 @@ TopLevel        : VarDecl                       { $1 }
 
 VarDecl         : var var ';'                   { VarDecl $1 $2 }
 
-ForwardDecl     : var var '(' Vars ')' ';'      { ForwardDecl $2 $1 $4 }
+ForwardDecl     : var var '(' FuncArgs ')' ';'      { ForwardDecl $2 $1 (map fst $4) }
 
 FuncDef         : var var '(' FuncArgs ')' '{' Stmts '}' { FuncDef $2 $1 $4 $7 }
 
@@ -92,9 +92,6 @@ Stmt            : '{' Stmts '}'                 { SBlock $2 }
                 | if '(' Expr ')' Stmt else Stmt  { SIfThenElse $3 $5 $7 }
                 | while '(' Expr ')' Stmt       { SWhile $3 $5 }
                 | return Expr ';'               { SReturn $2 }
-
-Vars            : var                           { [$1] }
-                | var ',' Vars                  { $1:$3 }
 
 Stmts           : {- empty -}                   { [] }
                 | Stmt Stmts                    { $1:$2 }

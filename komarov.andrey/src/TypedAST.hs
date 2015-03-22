@@ -28,12 +28,13 @@ data Type = TBool
 data FType = FType Type [Type]
 
 data Env = Env {
+  forwardDecls :: M.Map Id FType,
   functions :: M.Map Id FType,
   variables :: M.Map Id Type
   }
 
 emptyEnv :: Env
-emptyEnv = Env M.empty M.empty
+emptyEnv = Env M.empty M.empty M.empty
 
 data TypecheckError = UnknownVar Id
                     | UnknownFun Id
@@ -41,6 +42,7 @@ data TypecheckError = UnknownVar Id
                     | AlreadyBoundVar Id
                     | AlreadyBoundFun Id
                     | TypeMismatch Type Type
+                    | WrongArgsNumber [Type] [Type]
                     | SomethingWentWrong String
                     deriving (Show)
 
@@ -135,6 +137,8 @@ instance Typecheckable AST.Expression Type where
   typecheck (AST.ECall name args) = do
     targs <- mapM typecheck args
     FType ret targs' <- getFunType name
+    when (length targs /= length targs') $
+      throwError $ WrongArgsNumber targs targs'
     forM (zip targs targs') $ \(t, t') ->
       ensureSame t t'
     return ret
