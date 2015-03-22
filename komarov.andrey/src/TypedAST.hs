@@ -72,6 +72,9 @@ expect x ta = do
   a <- typecheck ta
   when (a /= x) $ throwError $ TypeMismatch a x
 
+ensureSame :: Type -> Type -> Typechecker ()
+ensureSame t1 t2 = when (t1 /= t2) $ throwError $ TypeMismatch t1 t2
+
 parseType :: AST.Id -> Typechecker Type
 parseType "int" = return TInt
 parseType "bool" = return TBool
@@ -100,12 +103,12 @@ instance Typecheckable AST.Expression Type where
   typecheck (AST.EEqual lhs rhs) = do
     tl <- typecheck lhs
     tr <- typecheck rhs
-    when (tl /= tr) $ throwError $ TypeMismatch tl tr
+    ensureSame tl tr
     return TBool
   typecheck (AST.ENotEqual lhs rhs) = do
     tl <- typecheck lhs
     tr <- typecheck rhs
-    when (tl /= tr) $ throwError $ TypeMismatch tl tr
+    ensureSame tl tr
     return TBool
   typecheck (AST.EAnd lhs rhs) =
     expect TBool lhs >> expect TBool rhs >> return TBool
@@ -115,7 +118,7 @@ instance Typecheckable AST.Expression Type where
     targs <- forM args typecheck
     FType ret targs' <- getFunType name
     forM (zip targs targs') $ \(t, t') ->
-      when (t /= t') $ throwError $ TypeMismatch t t'
+      ensureSame t t'
     return ret
 
 instance Typecheckable AST.Statement () where
@@ -126,4 +129,13 @@ instance Typecheckable AST.Statement () where
   typecheck (AST.SVarDecl tp name) = do
     t <- parseType tp
     updateVar name t
-    
+  typecheck (AST.SAssignment name expr) = do
+    tl <- getVarType name
+    tr <- typecheck expr
+    ensureSame tl tr
+  typecheck (AST.SRawExpr e) = void $ typecheck e
+  typecheck (AST.SIfThenElse cond thn els) =
+    expect TBool cond >> typecheck thn >> typecheck els
+  typecheck (AST.SWhile cond body) =
+    expect TBool cond >> typecheck body
+  typecheck (AST.SReturn e) = void $ typecheck e
