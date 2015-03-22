@@ -1,7 +1,8 @@
 
 int summ(int n)
 {
-    int i, sum;
+    int i;
+    int sum;
     i = 0;
     sum = 0;
     while (i < n)

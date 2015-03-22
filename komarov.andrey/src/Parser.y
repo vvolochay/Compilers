@@ -48,7 +48,20 @@ import AST
 
 %%
 
-Prog            : FuncDefs                      { Program $1 }
+Prog            : TopLevelDefs                  { Program $1 }
+
+TopLevelDefs    : {- empty -}                   { [] }
+                | TopLevel TopLevelDefs         { $1:$2 }
+
+TopLevel        : VarDecl                       { $1 }
+                | ForwardDecl                   { $1 }
+                | FuncDef                       { $1 }
+
+VarDecl         : var var ';'                   { VarDecl $1 $2 }
+
+ForwardDecl     : var var '(' Vars ')' ';'      { ForwardDecl $2 $1 $4 }
+
+FuncDef         : var var '(' FuncArgs ')' '{' Stmts '}' { FuncDef $2 $1 $4 $7 }
 
 Expr            : var                           { EVar $1 }
                 | num                           { EInt $1 }
@@ -72,28 +85,23 @@ FuncCallList    : {- empty -}                   { [] }
                 | Expr                          { [$1] }
                 | Expr ',' FuncCallList         { $1:$3 }
 
-Stmt            : '{' Stmts '}'                 { Block $2 }
-                | var Vars ';'                  { VariableDeclaration $1 $2 }
-                | var '=' Expr ';'              { Assignment $1 $3}
-                | Expr ';'                      { RawExpression $1 }
-                | if '(' Expr ')' Stmt else Stmt  { IfThenElse $3 $5 $7 }
-                | while '(' Expr ')' Stmt       { While $3 $5 }
-                | return Expr ';'               { Return $2 }
+Stmt            : '{' Stmts '}'                 { SBlock $2 }
+                | var var ';'                  { SVarDecl $1 $2 }
+                | var '=' Expr ';'              { SAssignment $1 $3}
+                | Expr ';'                      { SRawExpr $1 }
+                | if '(' Expr ')' Stmt else Stmt  { SIfThenElse $3 $5 $7 }
+                | while '(' Expr ')' Stmt       { SWhile $3 $5 }
+                | return Expr ';'               { SReturn $2 }
 
 Vars            : var                           { [$1] }
                 | var ',' Vars                  { $1:$3 }
 
 Stmts           : {- empty -}                   { [] }
-                | Stmt Stmts                { $1:$2 }
-
-FuncDef         : var var '(' FuncArgs ')' '{' Stmts '}'        { FunctionDefinition $1 $2 $4 $7 }
+                | Stmt Stmts                    { $1:$2 }
 
 FuncArgs        : {- empty -}                   { [] }
                 | var var                       { [($1, $2)] }
                 | var var ',' FuncArgs          { ($1, $2):$4 }
-
-FuncDefs        : FuncDef                       { [$1] }
-                | FuncDef FuncDefs              { $1:$2 }
 
 {
 parseError :: [Token] -> a

@@ -1,33 +1,35 @@
 module AST (
-  Id, Type,
+  Id,
   Program(..),
-  FunctionDefinition(..),
+  TopLevel(..),
   Statement(..),
   Expression(..)
   ) where
 
 type Id = String
 
-type Type = String
+data Program = Program [TopLevel]
+          deriving (Show)
 
-data Program = Program [FunctionDefinition]
-               deriving (Show, Eq, Ord)
+data TopLevel
+  = VarDecl Id Id
+  | ForwardDecl { name :: Id,
+                  ret :: Id,
+                  argsTypes :: [Id] }
+  | FuncDef { name :: Id,
+              ret :: Id,
+              args :: [(Id, Id)],
+              body :: [Statement]}
+  deriving (Show)
 
-data FunctionDefinition = FunctionDefinition
-                          { functionRetType :: Type
-                          , functionName    :: Id
-                          , functionArgs    :: [(Type, Id)]
-                          , functionBody    :: [Statement]
-                          } deriving (Show, Eq, Ord)
-
-data Statement = Block [Statement]
-               | VariableDeclaration Type [Id]
-               | Assignment Id Expression
-               | RawExpression Expression
-               | IfThenElse Expression Statement Statement
-               | While Expression Statement
-               | Return Expression
-               deriving (Show, Eq, Ord)
+data Statement = SBlock [Statement]
+               | SVarDecl Id Id
+               | SAssignment Id Expression
+               | SRawExpr Expression
+               | SIfThenElse Expression Statement Statement
+               | SWhile Expression Statement
+               | SReturn Expression
+               deriving (Show)
 
 data Expression = EVar Id
                  | EInt Int
