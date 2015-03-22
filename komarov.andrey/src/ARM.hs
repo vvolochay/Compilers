@@ -1,4 +1,9 @@
 module ARM (
+  OpCode(..),
+  Cond(..),
+  Assembly(..),
+  Register(..),
+  bp, sp, lr, pc
 
   ) where
 
@@ -32,13 +37,17 @@ data Cond = Eq -- Z set
           | Le -- Zs & Lt
           | Al -- always
           | Nv -- reserved
+          deriving (Show)
 
 data SetFlags = Update | Ignore
+              deriving (Show)
 
 -- TODO добавить barrel shifter
 data Operand2 = Reg Register | Imm Int32
+              deriving (Show)
 
 data Width = Word | HalfWord | Byte
+           deriving (Show)
 
 data OpCode
   = ADD SetFlags Register Register Operand2
@@ -61,4 +70,11 @@ data OpCode
   | LDR Width Register Register Operand2
   | STR Width Register Register Operand2
   | SWI
+  deriving (Show)
 
+data Assembly
+  = OpCode Cond OpCode
+  | Label String
+  | Comment String
+  | EmptyLine
+  deriving (Show)
