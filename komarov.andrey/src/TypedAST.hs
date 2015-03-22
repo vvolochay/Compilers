@@ -31,8 +31,10 @@ data Env = Env {
 
 data TypecheckError = UnknownVar Id
                     | UnknownFun Id
-                    | SomethingWentWrong String
+                    | UnknownType AST.Id
+                    | AlreadyBound Id
                     | TypeMismatch Type Type
+                    | SomethingWentWrong String
                     deriving (Show)
 
 instance Error TypecheckError where
@@ -45,22 +47,37 @@ class Typecheckable a b | a -> b where
 
 getVarType :: Id -> Typechecker Type
 getVarType name = do
-  vars <- variables <$> ask
+  vars <- asks variables
   case M.lookup name vars of
    Nothing -> throwError $ UnknownVar name
    Just t -> return t
 
 getFunType :: Id -> Typechecker FType
 getFunType name = do
-  funs <- functions <$> ask
+  funs <- asks functions
   case M.lookup name funs of
    Nothing -> throwError $ UnknownFun name
    Just t -> return t
+
+updateVar :: Id -> Type -> Typechecker Env
+updateVar name t = do
+  env <- ask
+  let vars = variables env
+  case M.lookup name vars of
+   Nothing -> return $ env { variables = M.insert name t vars }
+   Just t' -> throwError $ AlreadyBound name
 
 expect :: Typecheckable t Type => Type -> t -> Typechecker ()
 expect x ta = do
   a <- typecheck ta
   when (a /= x) $ throwError $ TypeMismatch a x
+
+parseType :: AST.Id -> Typecheckable Type
+parseType "int" = return TInt
+parseType "bool" = return TBool
+parseType "string" = return TString
+parseType "void" = return TVoid
+parseType t = throwError $ UnknownType t
 
 instance Typecheckable AST.Expression Type where
   typecheck (AST.EVar v) = getVarType v
@@ -100,3 +117,10 @@ instance Typecheckable AST.Expression Type where
     forM (zip targs targs') $ \(t, t') ->
       when (t /= t') $ throwError $ TypeMismatch t t'
     return ret
+
+instance Typecheckable AST.Statement () where
+  typecheck (AST.SBlock stmts) = forM_ stmts typecheck
+  typecheck (AST.SVarDecl tp name) = do
+    t <- parseType tp
+    env' <- updateVar name t
+    _
