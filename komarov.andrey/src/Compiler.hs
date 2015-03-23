@@ -2,6 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Compiler (
 
@@ -11,6 +12,9 @@ import Control.Monad.Writer
 import Control.Monad.State
 import Control.Monad.Error
 import Control.Applicative
+
+import Data.List (nub)
+import Data.Maybe (catMaybes)
 
 import qualified Data.Map as M
 import qualified Data.Set as S
@@ -25,12 +29,19 @@ data Type = TBool
           | TVoid
           deriving (Show, Eq)
 
+size :: Num a => Type -> a
+size TBool = 4
+size TInt = 4
+size TString = error "lol not implemented yet"
+size TVoid = error "lol void is not instantiable"
+
+
 data FType = FType Type [Type]
            deriving (Show, Eq)
 
 data Symbol
   = GlobalVariable { varType :: Type }
-  | LocalVariable { varType :: Type }
+  | LocalVariable { varType :: Type, varOffset :: Int }
   | ForwardDecl { funType :: FType }
   | FunctionDecl { funType :: FType }
   | Type Type
@@ -41,10 +52,11 @@ newtype SymbolTable =
 
 data Env = Env {
   symbols :: SymbolTable,
-  labels :: S.Set Id}
+  labels :: S.Set Id,
+  offset :: Int}
 
 emptyEnv :: Env
-emptyEnv = Env (SymbolTable M.empty) S.empty
+emptyEnv = Env (SymbolTable M.empty) S.empty 0
 
 stdlib :: Env
 stdlib = emptyEnv
@@ -63,7 +75,7 @@ getVarType :: Id -> Compiler Type
 getVarType name = symbol name >>= \case
   Nothing -> throwError $ SymbolNotDefined name
   Just (GlobalVariable t) -> return t
-  Just (LocalVariable t) -> return t
+  Just (LocalVariable { varType = t } ) -> return t
   Just s -> throwError $ VariableExpected s
 
 getType :: Id -> Compiler Type
@@ -72,10 +84,21 @@ getType name = symbol name >>= \case
   Just (Type t) -> return t
   Just s -> throwError $ TypeExpected s
 
-updateVar :: Id -> Symbol -> Compiler ()
-updateVar name s = symbol name >>= \case
-  Nothing -> setSymbol name s
-  Just s' -> throwError $ AlreadyBound name s' s
+updateGlobalVar :: Id -> Type -> Compiler ()
+updateGlobalVar name t = symbol name >>= \case
+  Nothing -> setSymbol name $ GlobalVariable t
+  Just s' -> throwError $ AlreadyBound name s' $ GlobalVariable t
+
+updateLocalVar :: Id -> Type -> Compiler ()
+updateLocalVar name t = symbol name >>= \case
+  Nothing -> do
+    off <- gets offset
+    let sz = size t
+    modify $ \(env@Env { offset = o }) -> env { offset = o + sz }
+    setSymbol name $ LocalVariable t off
+  Just s' -> throwError $ AlreadyBound name s' $ LocalVariable t 0
+  
+
 
 updateForwardDecl :: Id -> FType -> Compiler ()
 updateForwardDecl name ty = symbol name >>= \case
@@ -103,6 +126,7 @@ data CompileError
   | TypeExpected Symbol
   | FunctionExpected Symbol
   | ForwardDeclTypeMismatch FType FType
+  | InconsistentReturnTypes [Type]
   deriving (Show)
 
 instance Error CompileError where
@@ -130,7 +154,7 @@ instance Compilable AST.Program () where
 
 instance Compilable AST.TopLevel () where
   compile (AST.VarDecl ty name) =
-    getType ty >>= (updateVar name . LocalVariable)
+    getType ty >>= updateLocalVar name
   compile (AST.ForwardDecl name ret args) = do
     tret <- getVarType ret
     targs <- mapM getVarType args
@@ -139,3 +163,19 @@ instance Compilable AST.TopLevel () where
     tret <- getVarType ret
     targs <- mapM getVarType (map fst args)
     updateFun name (FType tret targs)
+
+instance Compilable AST.Statement (Maybe Type) where
+  compile (AST.SBlock stmts) = do
+    env <- get
+    types <- mapM compile stmts
+    put env
+    case nub $ catMaybes types of
+     [] -> return Nothing
+     [t] -> return $ Just t
+     ts -> throwError $ InconsistentReturnTypes ts
+  compile (AST.SVarDecl tp name) =
+    getType tp >>= updateLocalVar name >> return Nothing
+  compile (AST.SAssignment name expr) = do
+    -- TODO generate some assembly here
+    _
+    return Nothing
