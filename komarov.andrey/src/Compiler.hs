@@ -35,15 +35,22 @@ size TInt = 4
 size TString = error "lol not implemented yet"
 size TVoid = error "lol void is not instantiable"
 
+encode :: Type -> AType
+encode TInt = Word
+encode v = error $ "global " ++ show v ++ " variables are not supported yet!"
 
 data FType = FType Type [Type]
            deriving (Show, Eq)
 
+type Label = String
+
 data Symbol
-  = GlobalVariable { varType :: Type }
+  = GlobalVariable { varType :: Type,
+                     dataLabel :: Label,
+                     textLabel :: Label}
   | LocalVariable { varType :: Type, varOffset :: Int }
   | ForwardDecl { funType :: FType }
-  | FunctionDecl { funType :: FType }
+  | FunctionDecl { funType :: FType, label :: Label }
   | Type Type
   deriving (Show)
 
@@ -52,14 +59,20 @@ newtype SymbolTable =
 
 data Env = Env {
   symbols :: SymbolTable,
-  labels :: S.Set String,
-  offset :: Int}
+  labels :: S.Set Label,
+  offset :: Int,
+  epilogue :: Maybe Label}
 
 emptyEnv :: Env
-emptyEnv = Env (SymbolTable M.empty) S.empty 0
+emptyEnv = Env (SymbolTable M.empty) S.empty 0 Nothing
 
 stdlib :: Env
 stdlib = emptyEnv
+
+setEpilogue :: Label -> Compiler ()
+setEpilogue ep = do
+  env@Env { epilogue = epilogue } <- get
+  put $ env { epilogue = Just ep }
 
 symbol :: Id -> Compiler (Maybe Symbol)
 symbol name = do
@@ -74,8 +87,8 @@ setSymbol name s = do
 getVarType :: Id -> Compiler Type
 getVarType name = symbol name >>= \case
   Nothing -> throwError $ SymbolNotDefined name
-  Just (GlobalVariable t) -> return t
-  Just (LocalVariable { varType = t } ) -> return t
+  Just (GlobalVariable { varType = t }) -> return t
+  Just (LocalVariable { varType = t }) -> return t
   Just s -> throwError $ VariableExpected s
 
 getType :: Id -> Compiler Type
@@ -84,10 +97,20 @@ getType name = symbol name >>= \case
   Just (Type t) -> return t
   Just s -> throwError $ TypeExpected s
 
+assemble :: Segment -> Assembly -> Compiler ()
+assemble seg asm = tell $ Output [(seg, asm)]
+
 updateGlobalVar :: Id -> Type -> Compiler ()
 updateGlobalVar name t = symbol name >>= \case
-  Nothing -> setSymbol name $ GlobalVariable t
-  Just s' -> throwError $ AlreadyBound name s' $ GlobalVariable t
+  Nothing -> do
+             dLabel <- fresh name
+             tLabel <- fresh name
+             setSymbol name $ GlobalVariable t dLabel tLabel
+             assemble Data (Label dLabel)
+             assemble Data (Raw Word "0")
+             assemble Text (Label tLabel)
+             assemble Text (Raw Word dLabel)
+  Just s' -> throwError $ AlreadyBound name s' $ GlobalVariable t "" ""
 
 updateLocalVar :: Id -> Type -> Compiler ()
 updateLocalVar name t = symbol name >>= \case
@@ -104,16 +127,21 @@ updateForwardDecl :: Id -> FType -> Compiler ()
 updateForwardDecl name ty = symbol name >>= \case
   Nothing -> setSymbol name $ ForwardDecl ty
   Just (ForwardDecl ty') -> when (ty /= ty') $ throwError $ ForwardDeclTypeMismatch ty ty'
-  Just (FunctionDecl ty') -> when (ty /= ty') $ throwError $ ForwardDeclTypeMismatch ty ty'
+  Just (FunctionDecl { funType = ty' }) -> when (ty /= ty') $ throwError $ ForwardDeclTypeMismatch ty ty'
   Just s -> throwError $ AlreadyBound name s (ForwardDecl ty)
 
-updateFun :: Id -> FType -> Compiler ()
+updateFun :: Id -> FType -> Compiler Label
 updateFun name ty = symbol name >>= \case
-  Nothing -> setSymbol name $ FunctionDecl ty
+  Nothing -> do
+             lab <- fresh name
+             setSymbol name $ FunctionDecl ty lab
+             return lab
   Just (ForwardDecl ty') -> do
     when (ty /= ty') $ throwError $ ForwardDeclTypeMismatch ty ty'
-    setSymbol name $ FunctionDecl ty
-  Just s -> throwError $ AlreadyBound name s (FunctionDecl ty)
+    lab <- fresh name
+    setSymbol name $ FunctionDecl ty lab
+    return lab
+  Just s -> throwError $ AlreadyBound name s (FunctionDecl ty "")
 
 addLabel :: String -> Compiler ()
 addLabel lab = do
@@ -121,13 +149,13 @@ addLabel lab = do
   when (lab `S.member` labels) $ throwError $ LabelAlreadyDeclared lab
   put $ env { labels = S.insert lab labels }
 
-label :: String -> Compiler String
-label hint = do
+fresh :: String -> Compiler String
+fresh hint = do
   l <- gets labels
-  let fresh = head $ [x | suf <- "":(map (('_':) . show) [1..]),
+  let res = head $ [x | suf <- "":(map (('_':) . show) [1..]),
                       let x = hint ++ suf, not (x `S.member` l)]
-  addLabel fresh
-  return fresh
+  addLabel res
+  return res
 
 newtype Output = Output { unOutput :: [(Segment, Assembly)] }
                deriving (Show, Monoid)
@@ -177,7 +205,15 @@ instance Compilable AST.TopLevel () where
   compile (AST.FuncDef name ret args body) = do
     tret <- getVarType ret
     targs <- mapM getVarType (map fst args)
-    updateFun name (FType tret targs)
+    fname <- updateFun name (FType tret targs)
+    ep <- fresh $ name ++ "_ep"
+    assemble Text EmptyLine
+    assemble Text (Comment $ "function " ++ show name)
+    forM args $ \(t, n) ->
+      assemble Text $ Comment $ "   " ++ show n ++ " : " ++ show n
+    setEpilogue ep
+    mapM compile body
+    assemble Text $ Comment $ "end of " ++ show name
 
 instance Compilable AST.Statement (Maybe Type) where
   compile (AST.SBlock stmts) = do

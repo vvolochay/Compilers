@@ -4,7 +4,8 @@ module ARM (
   Assembly(..),
   Register(..),
   bp, sp, lr, pc,
-  Segment(..)
+  Segment(..),
+  AType(..)
 
   ) where
 
@@ -47,9 +48,6 @@ data SetFlags = Update | Ignore
 data Operand2 = Reg Register | Imm Int32
               deriving (Show)
 
-data Width = Word | HalfWord | Byte
-           deriving (Show)
-
 data OpCode
   = ADD SetFlags Register Register Operand2
   | SUB SetFlags Register Register Operand2
@@ -68,17 +66,21 @@ data OpCode
   | MOV SetFlags Register Operand2
   | MVN SetFlags Register Operand2
   | LDR' Register Int32 -- cheats
-  | LDR Width Register Register Operand2
-  | STR Width Register Register Operand2
+  | LDR Register Register Operand2
+  | STR Register Register Operand2
   | SWI
   deriving (Show)
 
 data Segment = Data | Text
              deriving (Show, Eq, Ord)
 
+data AType = Word
+           deriving (Show)
+
 data Assembly
   = OpCode Cond OpCode
   | Label String
+  | Raw AType String
   | Comment String
   | EmptyLine
   deriving (Show)
