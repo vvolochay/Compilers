@@ -141,11 +141,13 @@ updateFun name ty = symbol name >>= \case
   Nothing -> do
              lab <- fresh name
              setSymbol name $ FunctionDecl ty lab
+             as Data $ ".global " ++ name
              return lab
   Just (ForwardDecl ty') -> do
     when (ty /= ty') $ throwError $ ForwardDeclTypeMismatch ty ty'
     lab <- fresh name
     setSymbol name $ FunctionDecl ty lab
+    as Data $ ".global " ++ name
     return lab
   Just s -> throwError $ AlreadyBound name s (FunctionDecl ty "")
 

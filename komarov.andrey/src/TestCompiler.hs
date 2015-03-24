@@ -4,11 +4,11 @@ import Compiler
 
 main = do
     input <- getContents
-    putStrLn input
+    -- putStrLn input
     let tokens = scanTokens input
-    print tokens
+    -- print tokens
     let ast = parse tokens
-    print ast
+    --print ast
     putStrLn $ case runCompiler ast of
       Left e -> show e
       Right o -> output o

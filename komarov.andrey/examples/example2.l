@@ -1,1 +1,4 @@
-int lol() {return 1;}
+int lol() 
+{
+    return 42;
+}
