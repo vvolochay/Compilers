@@ -3,7 +3,8 @@ module ARM (
   Cond(..),
   Assembly(..),
   Register(..),
-  bp, sp, lr, pc
+  bp, sp, lr, pc,
+  Segment(..)
 
   ) where
 
@@ -71,6 +72,9 @@ data OpCode
   | STR Width Register Register Operand2
   | SWI
   deriving (Show)
+
+data Segment = Data | Text
+             deriving (Show, Eq, Ord)
 
 data Assembly
   = OpCode Cond OpCode

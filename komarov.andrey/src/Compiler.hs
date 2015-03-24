@@ -52,7 +52,7 @@ newtype SymbolTable =
 
 data Env = Env {
   symbols :: SymbolTable,
-  labels :: S.Set Id,
+  labels :: S.Set String,
   offset :: Int}
 
 emptyEnv :: Env
@@ -115,7 +115,21 @@ updateFun name ty = symbol name >>= \case
     setSymbol name $ FunctionDecl ty
   Just s -> throwError $ AlreadyBound name s (FunctionDecl ty)
 
-newtype Output = Output { unOutput :: [Assembly] }
+addLabel :: String -> Compiler ()
+addLabel lab = do
+  env@Env { labels = labels } <- get
+  when (lab `S.member` labels) $ throwError $ LabelAlreadyDeclared lab
+  put $ env { labels = S.insert lab labels }
+
+label :: String -> Compiler String
+label hint = do
+  l <- gets labels
+  let fresh = head $ [x | suf <- "":(map (('_':) . show) [1..]),
+                      let x = hint ++ suf, not (x `S.member` l)]
+  addLabel fresh
+  return fresh
+
+newtype Output = Output { unOutput :: [(Segment, Assembly)] }
                deriving (Show, Monoid)
 
 data CompileError
@@ -127,6 +141,7 @@ data CompileError
   | FunctionExpected Symbol
   | ForwardDeclTypeMismatch FType FType
   | InconsistentReturnTypes [Type]
+  | LabelAlreadyDeclared String
   deriving (Show)
 
 instance Error CompileError where
