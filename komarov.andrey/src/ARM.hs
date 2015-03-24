@@ -7,4 +7,9 @@ module ARM (
 type Assembly = String
 
 data Segment = Data | Text
-             deriving (Show)
+             deriving (Eq)
+
+instance Show Segment where
+  show Data = "data"
+  show Text = "text"
+

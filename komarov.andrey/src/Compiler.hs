@@ -5,7 +5,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Compiler (
-  runCompiler
+  runCompiler,
+  output
   ) where
 
 import Control.Monad.Writer
@@ -13,7 +14,8 @@ import Control.Monad.State
 import Control.Monad.Error
 import Control.Applicative
 
-import Data.List (nub)
+import Data.List
+import Data.Function
 import Data.Maybe (catMaybes)
 
 import qualified Data.Map as M
@@ -163,6 +165,18 @@ fresh hint = do
 
 newtype Output = Output { unOutput :: [(Segment, Assembly)] }
                deriving (Show, Monoid)
+
+output :: Output -> String
+output (Output out) =
+  intercalate "\n\n" $ map (uncurry sect) sections where
+    sect :: Segment -> [String] -> String
+    sect seg lines = "@@@@@@@@@@@@@@@\n." ++ show seg ++ "\n\n" ++ intercalate "\n" lines
+
+    toSect :: [(a, b)] -> (a, [b])
+    toSect pairs = let (a:_,b) = unzip pairs in (a, b)
+  
+    sections :: [(Segment, [String])]
+    sections = map toSect $ groupBy ((==) `on` fst) out
 
 data CompileError
   = CompileError
