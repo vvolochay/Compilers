@@ -97,8 +97,8 @@ getType name = symbol name >>= \case
   Just (Type t) -> return t
   Just s -> throwError $ TypeExpected s
 
-assemble :: Segment -> Assembly -> Compiler ()
-assemble seg asm = tell $ Output [(seg, asm)]
+as :: Segment -> Assembly -> Compiler ()
+as seg asm = tell $ Output [(seg, asm)]
 
 updateGlobalVar :: Id -> Type -> Compiler ()
 updateGlobalVar name t = symbol name >>= \case
@@ -106,10 +106,10 @@ updateGlobalVar name t = symbol name >>= \case
              dLabel <- fresh name
              tLabel <- fresh name
              setSymbol name $ GlobalVariable t dLabel tLabel
-             assemble Data (Label dLabel)
-             assemble Data (Raw Word "0")
-             assemble Text (Label tLabel)
-             assemble Text (Raw Word dLabel)
+             as Data (Label dLabel)
+             as Data (Raw Word "0")
+             as Text (Label tLabel)
+             as Text (Raw Word dLabel)
   Just s' -> throwError $ AlreadyBound name s' $ GlobalVariable t "" ""
 
 updateLocalVar :: Id -> Type -> Compiler ()
@@ -207,13 +207,20 @@ instance Compilable AST.TopLevel () where
     targs <- mapM getVarType (map fst args)
     fname <- updateFun name (FType tret targs)
     ep <- fresh $ name ++ "_ep"
-    assemble Text EmptyLine
-    assemble Text (Comment $ "function " ++ show name)
+    as Text EmptyLine
+    as Text (Comment $ "function " ++ show name)
     forM args $ \(t, n) ->
-      assemble Text $ Comment $ "   " ++ show n ++ " : " ++ show n
+      as Text $ Comment $ "   " ++ show n ++ " : " ++ show n
+    as Text $ Label fname
+    as Text $ OpCode Al $ PUSH [fp, lr]
+    as Text $ OpCode Al $ mov fp lr
     setEpilogue ep
     mapM compile body
-    assemble Text $ Comment $ "end of " ++ show name
+    as Text $ Label ep
+    as Text $ OpCode Al $ mov sp fp
+    as Text $ OpCode Al $ POP [fp, lr]
+    as Text $ OpCode Al $ mov pc lr
+    as Text $ Comment $ "end of " ++ show name
 
 instance Compilable AST.Statement (Maybe Type) where
   compile (AST.SBlock stmts) = do
@@ -226,7 +233,12 @@ instance Compilable AST.Statement (Maybe Type) where
      ts -> throwError $ InconsistentReturnTypes ts
   compile (AST.SVarDecl tp name) =
     getType tp >>= updateLocalVar name >> return Nothing
-  compile (AST.SAssignment name expr) = do
-    -- TODO generate some assembly here
-    _
-    return Nothing
+  compile (AST.SAssignment name expr) = symbol name >>= \case
+    Nothing -> throwError $ SymbolNotDefined name
+    Just (LocalVariable tp off) -> do
+      as Text $ Comment $ show name ++ " := " ++ show expr
+      _
+    Just (GlobalVariable tp dLabel tLabel) -> do
+      as Text $ Comment $ show name ++ " := " ++ show expr
+      _
+    Just s -> throwError $ VariableExpected s

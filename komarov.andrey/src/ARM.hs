@@ -3,10 +3,10 @@ module ARM (
   Cond(..),
   Assembly(..),
   Register(..),
-  bp, sp, lr, pc,
+  fp, sp, lr, pc,
   Segment(..),
-  AType(..)
-
+  AType(..),
+  mov
   ) where
 
 import Data.Int
@@ -17,8 +17,8 @@ data Register = R0 | R1 | R2 | R3
               | R12 | R13 | R14 | R15
   deriving (Eq, Ord, Show)
 
-bp, sp, lr, pc :: Register
-bp = R11
+fp, sp, lr, pc :: Register
+fp = R11
 sp = R13
 lr = R14
 pc = R15
@@ -68,8 +68,13 @@ data OpCode
   | LDR' Register Int32 -- cheats
   | LDR Register Register Operand2
   | STR Register Register Operand2
+  | PUSH [Register]
+  | POP [Register]
   | SWI
   deriving (Show)
+
+mov :: Register -> Register -> OpCode
+mov rd rs = MOV Ignore rd $ Reg rs
 
 data Segment = Data | Text
              deriving (Show, Eq, Ord)
