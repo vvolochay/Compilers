@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Compiler (
-
+  runCompiler
   ) where
 
 import Control.Monad.Writer
@@ -66,8 +66,14 @@ data Env = Env {
 emptyEnv :: Env
 emptyEnv = Env (SymbolTable M.empty) S.empty 0 Nothing
 
+stdTable :: SymbolTable
+stdTable = SymbolTable $ M.fromList $ [
+  ("int", Type TInt),
+  ("bool", Type TBool),
+  ("void", Type TVoid)]
+
 stdlib :: Env
-stdlib = emptyEnv
+stdlib = emptyEnv { symbols = stdTable }
 
 setEpilogue :: Label -> Compiler ()
 setEpilogue ep = do
@@ -198,12 +204,12 @@ instance Compilable AST.TopLevel () where
   compile (AST.VarDecl ty name) =
     getType ty >>= updateLocalVar name
   compile (AST.ForwardDecl name ret args) = do
-    tret <- getVarType ret
-    targs <- mapM getVarType args
+    tret <- getType ret
+    targs <- mapM getType args
     updateForwardDecl name (FType tret targs)
   compile (AST.FuncDef name ret args body) = do
-    tret <- getVarType ret
-    targs <- mapM getVarType (map fst args)
+    tret <- getType ret
+    targs <- mapM getType (map fst args)
     fname <- updateFun name (FType tret targs)
     ep <- fresh $ name ++ "_ep"
     as Text ""
@@ -269,4 +275,8 @@ instance Compilable AST.Statement (Maybe Type) where
     return $ Just tp
 
 instance Compilable AST.Expression Type where
-  compile _ = _
+  compile (AST.EInt i) = do
+    as Text $ "ldr r0, =" ++ show i
+    as Text $ "push {r0}"
+    return TInt
+  compile _ = undefined
