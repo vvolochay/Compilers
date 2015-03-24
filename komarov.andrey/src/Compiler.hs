@@ -35,8 +35,8 @@ size TInt = 4
 size TString = error "lol not implemented yet"
 size TVoid = error "lol void is not instantiable"
 
-encode :: Type -> AType
-encode TInt = Word
+encode :: Type -> String
+encode TInt = "word"
 encode v = error $ "global " ++ show v ++ " variables are not supported yet!"
 
 data FType = FType Type [Type]
@@ -106,10 +106,8 @@ updateGlobalVar name t = symbol name >>= \case
              dLabel <- fresh name
              tLabel <- fresh name
              setSymbol name $ GlobalVariable t dLabel tLabel
-             as Data (Label dLabel)
-             as Data (Raw Word "0")
-             as Text (Label tLabel)
-             as Text (Raw Word dLabel)
+             as Data $ dLabel ++ ": .word 0"
+             as Text $ tLabel ++ ": .word " ++ dLabel
   Just s' -> throwError $ AlreadyBound name s' $ GlobalVariable t "" ""
 
 updateLocalVar :: Id -> Type -> Compiler ()
@@ -208,22 +206,22 @@ instance Compilable AST.TopLevel () where
     targs <- mapM getVarType (map fst args)
     fname <- updateFun name (FType tret targs)
     ep <- fresh $ name ++ "_ep"
-    as Text EmptyLine
-    as Text (Comment $ "function " ++ show name)
+    as Text ""
+    as Text $ "@ function " ++ show name
     forM args $ \(t, n) ->
-      as Text $ Comment $ "   " ++ show n ++ " : " ++ show n
-    as Text $ Label fname
-    as Text $ OpCode Al $ PUSH [fp, lr]
-    as Text $ OpCode Al $ mov fp sp
+      as Text $ "@   " ++ show n ++ " : " ++ show n
+    as Text $ fname ++ ":"
+    as Text $ "push {fp, lr}"
+    as Text $ "mov fp, sp"
     -- TODO Correct stack frame size
-    as Text $ OpCode Al $ sub sp sp $ Imm 16 
+    as Text $ "sub sp, sp, #16"
     setEpilogue ep
     mapM compile body
-    as Text $ Label ep
-    as Text $ OpCode Al $ mov sp fp
-    as Text $ OpCode Al $ POP [fp, lr]
-    as Text $ OpCode Al $ mov pc lr
-    as Text $ Comment $ "end of " ++ show name
+    as Text $ ep ++ ":"
+    as Text $ "mov sp, fp"
+    as Text $ "pop {fp, lr}"
+    as Text $ "mov pc, lr"
+    as Text $ "@ end of " ++ show name
 
 instance Compilable AST.Statement (Maybe Type) where
   compile (AST.SBlock stmts) = do
@@ -239,15 +237,15 @@ instance Compilable AST.Statement (Maybe Type) where
   compile (AST.SAssignment name expr) = symbol name >>= \case
     Nothing -> throwError $ SymbolNotDefined name
     Just (LocalVariable tp off) -> do
-      as Text $ Comment $ show name ++ " := " ++ show expr
+      as Text $ "@ " ++ show name ++ " := " ++ show expr
       rhs <- compile expr
       when (tp /= rhs) $ throwError $ TypeMismatch tp rhs
-      as Text $ OpCode Al $ POP [R0]
-      as Text $ Comment $ "storing to local " ++ name
-      as Text $ OpCode Al $ STR R0 sp (Imm (-off))
+      as Text $ "pop {r0}"
+      as Text $ "@ storing to local " ++ name
+      as Text $ "str r0, [sp, #-" ++ show off ++ "]"
       _
     Just (GlobalVariable tp dLabel tLabel) -> do
-      as Text $ Comment $ show name ++ " := " ++ show expr
+      as Text $ "@ " ++ show name ++ " := " ++ show expr
       rhs <- compile expr
       when (tp /= rhs) $ throwError $ TypeMismatch tp rhs
       _
