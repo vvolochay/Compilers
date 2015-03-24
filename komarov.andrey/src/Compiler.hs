@@ -118,7 +118,7 @@ updateLocalVar name t = symbol name >>= \case
     off <- gets offset
     let sz = size t
     modify $ \(env@Env { offset = o }) -> env { offset = o + sz }
-    setSymbol name $ LocalVariable t off
+    setSymbol name $ LocalVariable t (off + sz)
   Just s' -> throwError $ AlreadyBound name s' $ LocalVariable t 0
   
 
@@ -169,6 +169,7 @@ data CompileError
   | FunctionExpected Symbol
   | ForwardDeclTypeMismatch FType FType
   | InconsistentReturnTypes [Type]
+  | TypeMismatch Type Type
   | LabelAlreadyDeclared String
   deriving (Show)
 
@@ -213,7 +214,9 @@ instance Compilable AST.TopLevel () where
       as Text $ Comment $ "   " ++ show n ++ " : " ++ show n
     as Text $ Label fname
     as Text $ OpCode Al $ PUSH [fp, lr]
-    as Text $ OpCode Al $ mov fp lr
+    as Text $ OpCode Al $ mov fp sp
+    -- TODO Correct stack frame size
+    as Text $ OpCode Al $ sub sp sp $ Imm 16 
     setEpilogue ep
     mapM compile body
     as Text $ Label ep
@@ -237,8 +240,18 @@ instance Compilable AST.Statement (Maybe Type) where
     Nothing -> throwError $ SymbolNotDefined name
     Just (LocalVariable tp off) -> do
       as Text $ Comment $ show name ++ " := " ++ show expr
+      rhs <- compile expr
+      when (tp /= rhs) $ throwError $ TypeMismatch tp rhs
+      as Text $ OpCode Al $ POP [R0]
+      as Text $ Comment $ "storing to local " ++ name
+      as Text $ OpCode Al $ STR R0 sp (Imm (-off))
       _
     Just (GlobalVariable tp dLabel tLabel) -> do
       as Text $ Comment $ show name ++ " := " ++ show expr
+      rhs <- compile expr
+      when (tp /= rhs) $ throwError $ TypeMismatch tp rhs
       _
     Just s -> throwError $ VariableExpected s
+
+instance Compilable AST.Expression Type where
+  compile _ = _

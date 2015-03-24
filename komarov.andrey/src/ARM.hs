@@ -6,7 +6,8 @@ module ARM (
   fp, sp, lr, pc,
   Segment(..),
   AType(..),
-  mov
+  Operand2(..),
+  mov, sub
   ) where
 
 import Data.Int
@@ -45,7 +46,7 @@ data SetFlags = Update | Ignore
               deriving (Show)
 
 -- TODO добавить barrel shifter
-data Operand2 = Reg Register | Imm Int32
+data Operand2 = Reg Register | Imm Int
               deriving (Show)
 
 data OpCode
@@ -65,7 +66,7 @@ data OpCode
   | BIC SetFlags Register Register Operand2 -- and not
   | MOV SetFlags Register Operand2
   | MVN SetFlags Register Operand2
-  | LDR' Register Int32 -- cheats
+  | LDR' Register Int -- cheats
   | LDR Register Register Operand2
   | STR Register Register Operand2
   | PUSH [Register]
@@ -75,6 +76,9 @@ data OpCode
 
 mov :: Register -> Register -> OpCode
 mov rd rs = MOV Ignore rd $ Reg rs
+
+sub :: Register -> Register -> Operand2 -> OpCode
+sub = SUB Ignore
 
 data Segment = Data | Text
              deriving (Show, Eq, Ord)
@@ -88,4 +92,5 @@ data Assembly
   | Raw AType String
   | Comment String
   | EmptyLine
+  | Code
   deriving (Show)
