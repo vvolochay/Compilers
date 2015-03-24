@@ -243,13 +243,30 @@ instance Compilable AST.Statement (Maybe Type) where
       as Text $ "pop {r0}"
       as Text $ "@ storing to local " ++ name
       as Text $ "str r0, [sp, #-" ++ show off ++ "]"
-      _
+      return Nothing
     Just (GlobalVariable tp dLabel tLabel) -> do
       as Text $ "@ " ++ show name ++ " := " ++ show expr
       rhs <- compile expr
       when (tp /= rhs) $ throwError $ TypeMismatch tp rhs
-      _
+      as Text $ "ldr r1, " ++ tLabel
+      as Text $ "pop {r0}"
+      as Text $ "str r0, [r1]"
+      return Nothing
     Just s -> throwError $ VariableExpected s
+  compile (AST.SRawExpr expr) = do
+    compile expr
+    as Text $ "pop {r0} @ unused"
+    return Nothing
+  compile (AST.SIfThenElse cond thn els) = do
+    undefined -- TODO too hard, skipping
+  compile (AST.SWhile cond body) = do
+    undefined -- TODO too hard, skipping
+  compile (AST.SReturn expr) = do
+    tp <- compile expr
+    as Text $ "pop {r0}"
+    Just ep <- gets epilogue
+    as Text $ "b " ++ ep
+    return $ Just tp
 
 instance Compilable AST.Expression Type where
   compile _ = _
