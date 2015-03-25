@@ -7,6 +7,8 @@ xx: .word x
 
 .global f
 .global fact
+.global ret5
+.global ret6
 
 f:
 ldr r1, xx
@@ -15,7 +17,13 @@ add r0, #1
 str r0, [r1]
 mov pc, lr
 
-# fact(r1, r2)
+# calling conv.
+ret5:
+ret6:
+ldr r0, [sp]
+mov pc, lr
+
+# fact(n)
 fact:
 push {fp, lr}   @
 mov fp, sp      @ ENTER

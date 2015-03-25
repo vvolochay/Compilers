@@ -51,7 +51,7 @@ data Symbol
                      dataLabel :: Label,
                      textLabel :: Label}
   | LocalVariable { varType :: Type, varOffset :: Int }
-  | ForwardDecl { funType :: FType }
+  | ForwardDecl { funType :: FType, label :: Label }
   | FunctionDecl { funType :: FType, label :: Label }
   | Type Type
   deriving (Show)
@@ -77,6 +77,12 @@ stdTable = SymbolTable $ M.fromList $ [
 stdlib :: Env
 stdlib = emptyEnv { symbols = stdTable }
 
+setOffset :: Int -> Compiler ()
+setOffset off = modify $ \env -> env { offset = off }
+
+setSymbols :: SymbolTable -> Compiler ()
+setSymbols s = modify $ \env -> env { symbols = s }
+
 setEpilogue :: Label -> Compiler ()
 setEpilogue ep = do
   env@Env { epilogue = epilogue } <- get
@@ -91,6 +97,13 @@ setSymbol :: Id -> Symbol -> Compiler ()
 setSymbol name s = do
   env@(Env { symbols = SymbolTable syms }) <- get
   put $ env { symbols = SymbolTable $ M.insert name s syms }
+
+getFun :: Id -> Compiler (FType, Label)
+getFun name = symbol name >>= \case
+  Nothing -> throwError $ SymbolNotDefined name
+  Just (ForwardDecl { funType = t, label = l }) -> return (t, l)
+  Just (FunctionDecl { funType = t, label = l }) -> return (t, l)
+  Just s -> throwError $ FunctionExpected s
 
 getVarType :: Id -> Compiler Type
 getVarType name = symbol name >>= \case
@@ -126,15 +139,16 @@ updateLocalVar name t = symbol name >>= \case
     modify $ \(env@Env { offset = o }) -> env { offset = o + sz }
     setSymbol name $ LocalVariable t (off + sz)
   Just s' -> throwError $ AlreadyBound name s' $ LocalVariable t 0
-  
-
 
 updateForwardDecl :: Id -> FType -> Compiler ()
 updateForwardDecl name ty = symbol name >>= \case
-  Nothing -> setSymbol name $ ForwardDecl ty
-  Just (ForwardDecl ty') -> when (ty /= ty') $ throwError $ ForwardDeclTypeMismatch ty ty'
+  Nothing -> do
+    lab <- fresh name
+    when (lab /= name) $ throwError $ LabelAlreadyDeclared name
+    setSymbol name $ ForwardDecl ty lab
+  Just (ForwardDecl ty' _) -> when (ty /= ty') $ throwError $ ForwardDeclTypeMismatch ty ty'
   Just (FunctionDecl { funType = ty' }) -> when (ty /= ty') $ throwError $ ForwardDeclTypeMismatch ty ty'
-  Just s -> throwError $ AlreadyBound name s (ForwardDecl ty)
+  Just s -> throwError $ AlreadyBound name s (ForwardDecl ty "")
 
 updateFun :: Id -> FType -> Compiler Label
 updateFun name ty = symbol name >>= \case
@@ -143,9 +157,8 @@ updateFun name ty = symbol name >>= \case
              setSymbol name $ FunctionDecl ty lab
              as Data $ ".global " ++ name
              return lab
-  Just (ForwardDecl ty') -> do
+  Just (ForwardDecl ty' lab) -> do
     when (ty /= ty') $ throwError $ ForwardDeclTypeMismatch ty ty'
-    lab <- fresh name
     setSymbol name $ FunctionDecl ty lab
     as Data $ ".global " ++ name
     return lab
@@ -197,6 +210,7 @@ data CompileError
   | InconsistentReturnTypes [Type]
   | TypeMismatch Type Type
   | LabelAlreadyDeclared String
+  | WrongArgsNumber [Type] [Type]
   deriving (Show)
 
 instance Error CompileError where
@@ -242,9 +256,24 @@ instance Compilable AST.TopLevel () where
     as Text $ "push {fp, lr}"
     as Text $ "mov fp, sp"
     -- TODO Correct stack frame size
-    as Text $ "sub sp, sp, #16"
+    as Text $ "sub sp, sp, #128"
     setEpilogue ep
+    oldSymbols <- gets symbols
+    let argPairs = zip (map snd args) targs
+    let stackArgs = drop 4 argPairs
+    let registerArgs = take 4 argPairs
+    setOffset $ -(4 * length stackArgs)
+    mapM (uncurry updateLocalVar) argPairs
+    case length registerArgs of
+     0 -> return ()
+     1 -> as Text $ "str r0, [fp, #-4]"
+     2 -> mapM_ (as Text) ["str r0, [fp, #-8]", "str r1, [fp, #-4]"]
+     3 -> mapM_ (as Text) ["str r0, [fp, #-12]", "str r1, [fp, #-8]", "str r2, [fp, #-4]"]
+     4 -> mapM_ (as Text) ["str r0, [fp, #-16]", "str r1, [fp, #-12]", "str r2, [fp, #-8]", "str r3, [fp, #-4]"]
+     n -> error "IMPOSSIBLE"
     mapM compile body
+    setOffset 0
+    setSymbols oldSymbols
     as Text $ ep ++ ":"
     as Text $ "mov sp, fp"
     as Text $ "pop {fp, lr}"
@@ -267,7 +296,7 @@ instance Compilable AST.Statement (Maybe Type) where
       when (tp /= rhs) $ throwError $ TypeMismatch tp rhs
       as Text $ "pop {r0}"
       as Text $ "@ storing to local " ++ name
-      as Text $ "str r0, [sp, #-" ++ show off ++ "]"
+      as Text $ "str r0, [fp, #-" ++ show off ++ "]"
       return Nothing
     Just (GlobalVariable tp dLabel tLabel) -> do
       as Text $ "@ " ++ show name ++ " := " ++ show expr
@@ -309,8 +338,41 @@ instance Compilable AST.Statement (Maybe Type) where
     return $ Just tp
 
 instance Compilable AST.Expression Type where
+  compile (AST.EVar v) = symbol v >>= \case
+    Nothing -> throwError $ SymbolNotDefined v
+    Just (LocalVariable tp off) -> do
+      as Text $ "@ local " ++ show v
+      as Text $ "ldr r0, [fp, #-" ++ show off ++ "]"
+      as Text $ "push {r0}"
+      return tp
+    Just (GlobalVariable tp dLabel tLabel) -> do
+      as Text $ "@ global " ++ show v
+      as Text $ "ldr r0, " ++ tLabel
+      as Text $ "ldr r0, [r0]"
+      as Text $ "push {r0}"
+      return tp
+    Just s -> throwError $ VariableExpected s
+    
   compile (AST.EInt i) = do
     as Text $ "ldr r0, =" ++ show i
+    as Text $ "push {r0}"
+    return TInt
+  compile (AST.ESub lhs rhs) = do
+    tl <- compile lhs
+    tr <- compile rhs
+    when (tl /= TInt) $ throwError $ TypeMismatch tl TInt
+    when (tr /= TInt) $ throwError $ TypeMismatch tr TInt
+    as Text $ "pop {r0, r1}"
+    as Text $ "sub r0, r1, r0"
+    as Text $ "push {r0}"
+    return TInt
+  compile (AST.EMul lhs rhs) = do
+    tl <- compile lhs
+    tr <- compile rhs
+    when (tl /= TInt) $ throwError $ TypeMismatch tl TInt
+    when (tr /= TInt) $ throwError $ TypeMismatch tr TInt
+    as Text $ "pop {r0, r1}"
+    as Text $ "mul r0, r1, r0"
     as Text $ "push {r0}"
     return TInt
   compile (AST.EEqual lhs rhs) = do
@@ -323,4 +385,20 @@ instance Compilable AST.Expression Type where
     as Text $ "movne r0, #0"
     as Text $ "push {r0}"
     return TBool
+  compile (AST.ECall name args) = do
+    targs <- reverse <$> (mapM compile $ reverse args)
+    (FType ret targs', label) <- getFun name
+    when (length targs /= length targs') $
+      throwError $ WrongArgsNumber targs targs'
+    forM (zip targs targs') $ \(t, t') ->
+      when (t /= t') $ throwError $ TypeMismatch t t'
+    case (length args) of
+     0 -> as Text $ "@ no args"
+     1 -> as Text $ "pop {r0}"
+     2 -> as Text $ "pop {r0, r1}"
+     3 -> as Text $ "pop {r0, r1, r2}"
+     _ -> as Text $ "pop {r0, r1, r2, r3}"
+    as Text $ "bl " ++ label
+    as Text $ "push {r0}"
+    return ret
   compile _ = undefined
