@@ -1,0 +1,13 @@
+int whileTest(int n)
+{
+    int sum;
+    sum = 0;
+    int i;
+    i = 0;
+    while (i < n) {
+        sum = sum + i;
+        i = i + 1;
+    }
+    return sum;
+}
+

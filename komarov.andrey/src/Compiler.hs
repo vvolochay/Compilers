@@ -329,7 +329,17 @@ instance Compilable AST.Statement (Maybe Type) where
     as Text $ endifLabel ++ ":"
     return retType
   compile (AST.SWhile cond body) = do
-    undefined -- TODO too hard, skipping
+    [whileLabel, endWhileLabel] <- mapM fresh ["while", "endwhile"]
+    as Text $ whileLabel ++ ":"
+    tcond <- compile cond
+    when (tcond /= TBool) $ throwError $ TypeMismatch tcond TBool
+    as Text $ "pop {r0}"
+    as Text $ "teq r0, #0"
+    as Text $ "beq " ++ endWhileLabel
+    tret <- compile body
+    as Text $ "b " ++ whileLabel
+    as Text $ endWhileLabel ++ ":"
+    return tret
   compile (AST.SReturn expr) = do
     tp <- compile expr
     as Text $ "pop {r0}"
@@ -357,6 +367,15 @@ instance Compilable AST.Expression Type where
     as Text $ "ldr r0, =" ++ show i
     as Text $ "push {r0}"
     return TInt
+  compile (AST.EAdd lhs rhs) = do
+    tl <- compile lhs
+    tr <- compile rhs
+    when (tl /= TInt) $ throwError $ TypeMismatch tl TInt
+    when (tr /= TInt) $ throwError $ TypeMismatch tr TInt
+    as Text $ "pop {r0, r1}"
+    as Text $ "add r0, r1, r0"
+    as Text $ "push {r0}"
+    return TInt
   compile (AST.ESub lhs rhs) = do
     tl <- compile lhs
     tr <- compile rhs
@@ -375,6 +394,17 @@ instance Compilable AST.Expression Type where
     as Text $ "mul r0, r1, r0"
     as Text $ "push {r0}"
     return TInt
+  compile (AST.ELess lhs rhs) = do
+    tl <- compile lhs
+    tr <- compile rhs
+    when (tl /= TInt) $ throwError $ TypeMismatch tl TInt
+    when (tr /= TInt) $ throwError $ TypeMismatch tr TInt
+    as Text $ "pop {r0, r1}"
+    as Text $ "cmp r1, r0"
+    as Text $ "movlt r0, #1"
+    as Text $ "movge r0, #0"
+    as Text $ "push {r0}"
+    return TBool
   compile (AST.EEqual lhs rhs) = do
     tl <- compile lhs
     tr <- compile rhs
