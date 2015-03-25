@@ -165,6 +165,12 @@ fresh hint = do
   addLabel res
   return res
 
+mergeTypes :: [Maybe Type] -> Compiler (Maybe Type)
+mergeTypes types = case nub $ catMaybes types of
+  [] -> return Nothing
+  [t] -> return $ Just t
+  ts -> throwError $ InconsistentReturnTypes ts
+
 newtype Output = Output { unOutput :: [(Segment, Assembly)] }
                deriving (Show, Monoid)
 
@@ -250,10 +256,7 @@ instance Compilable AST.Statement (Maybe Type) where
     env <- get
     types <- mapM compile stmts
     put env
-    case nub $ catMaybes types of
-     [] -> return Nothing
-     [t] -> return $ Just t
-     ts -> throwError $ InconsistentReturnTypes ts
+    mergeTypes types
   compile (AST.SVarDecl tp name) =
     getType tp >>= updateLocalVar name >> return Nothing
   compile (AST.SAssignment name expr) = symbol name >>= \case
@@ -280,7 +283,22 @@ instance Compilable AST.Statement (Maybe Type) where
     as Text $ "pop {r0} @ unused"
     return Nothing
   compile (AST.SIfThenElse cond thn els) = do
-    undefined -- TODO too hard, skipping
+    elseLabel <- fresh "else"
+    endifLabel <- fresh "endif"
+    as Text $ "@ if"
+    t <- compile cond
+    when (t /= TBool) $ throwError $ TypeMismatch t TBool
+    as Text $ "pop {r0}"
+    as Text $ "@ then"
+    as Text $ "teq r0, #0"
+    as Text $ "beq " ++ elseLabel
+    thnType <- compile thn
+    as Text $ "b " ++ endifLabel
+    as Text $ elseLabel ++ ":"
+    elsType <- compile els
+    retType <- mergeTypes [thnType, elsType]
+    as Text $ endifLabel ++ ":"
+    return retType
   compile (AST.SWhile cond body) = do
     undefined -- TODO too hard, skipping
   compile (AST.SReturn expr) = do
@@ -295,4 +313,14 @@ instance Compilable AST.Expression Type where
     as Text $ "ldr r0, =" ++ show i
     as Text $ "push {r0}"
     return TInt
+  compile (AST.EEqual lhs rhs) = do
+    tl <- compile lhs
+    tr <- compile rhs
+    when (tl /= tr) $ throwError $ TypeMismatch tl tr
+    as Text $ "pop {r0, r1}"
+    as Text $ "teq r0, r1"
+    as Text $ "moveq r0, #1"
+    as Text $ "movne r0, #0"
+    as Text $ "push {r0}"
+    return TBool
   compile _ = undefined
