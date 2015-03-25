@@ -65,6 +65,11 @@ data Env = Env {
   offset :: Int,
   epilogue :: Maybe Label}
 
+put' :: Env -> Compiler ()
+put' env' = do
+  env <- get
+  put $ env' { labels = labels env }
+
 emptyEnv :: Env
 emptyEnv = Env (SymbolTable M.empty) S.empty 0 Nothing
 
@@ -267,9 +272,9 @@ instance Compilable AST.TopLevel () where
     case length registerArgs of
      0 -> return ()
      1 -> as Text $ "str r0, [fp, #-4]"
-     2 -> mapM_ (as Text) ["str r0, [fp, #-8]", "str r1, [fp, #-4]"]
-     3 -> mapM_ (as Text) ["str r0, [fp, #-12]", "str r1, [fp, #-8]", "str r2, [fp, #-4]"]
-     4 -> mapM_ (as Text) ["str r0, [fp, #-16]", "str r1, [fp, #-12]", "str r2, [fp, #-8]", "str r3, [fp, #-4]"]
+     2 -> mapM_ (as Text) ["str r0, [fp, #-4]", "str r1, [fp, #-8]"]
+     3 -> mapM_ (as Text) ["str r0, [fp, #-4]", "str r1, [fp, #-8]", "str r2, [fp, #-12]"]
+     4 -> mapM_ (as Text) ["str r0, [fp, #-4]", "str r1, [fp, #-8]", "str r2, [fp, #-12]", "str r3, [fp, #-16]"]
      n -> error "IMPOSSIBLE"
     mapM compile body
     setOffset 0
@@ -284,7 +289,7 @@ instance Compilable AST.Statement (Maybe Type) where
   compile (AST.SBlock stmts) = do
     env <- get
     types <- mapM compile stmts
-    put env
+    put' env
     mergeTypes types
   compile (AST.SVarDecl tp name) =
     getType tp >>= updateLocalVar name >> return Nothing
@@ -362,7 +367,10 @@ instance Compilable AST.Expression Type where
       as Text $ "push {r0}"
       return tp
     Just s -> throwError $ VariableExpected s
-    
+  compile (AST.EBool b) = do
+    as Text $ "ldr r0, =" ++ show (if b then 1 else 0)
+    as Text $ "push {r0}"
+    return TBool
   compile (AST.EInt i) = do
     as Text $ "ldr r0, =" ++ show i
     as Text $ "push {r0}"
@@ -405,6 +413,39 @@ instance Compilable AST.Expression Type where
     as Text $ "movge r0, #0"
     as Text $ "push {r0}"
     return TBool
+  compile (AST.EGreater lhs rhs) = do
+    tl <- compile lhs
+    tr <- compile rhs
+    when (tl /= TInt) $ throwError $ TypeMismatch tl TInt
+    when (tr /= TInt) $ throwError $ TypeMismatch tr TInt
+    as Text $ "pop {r0, r1}"
+    as Text $ "cmp r1, r0"
+    as Text $ "movgt r0, #1"
+    as Text $ "movle r0, #0"
+    as Text $ "push {r0}"
+    return TBool
+  compile (AST.ELessEq lhs rhs) = do
+    tl <- compile lhs
+    tr <- compile rhs
+    when (tl /= TInt) $ throwError $ TypeMismatch tl TInt
+    when (tr /= TInt) $ throwError $ TypeMismatch tr TInt
+    as Text $ "pop {r0, r1}"
+    as Text $ "cmp r1, r0"
+    as Text $ "movle r0, #1"
+    as Text $ "movgt r0, #0"
+    as Text $ "push {r0}"
+    return TBool
+  compile (AST.EGreaterEq lhs rhs) = do
+    tl <- compile lhs
+    tr <- compile rhs
+    when (tl /= TInt) $ throwError $ TypeMismatch tl TInt
+    when (tr /= TInt) $ throwError $ TypeMismatch tr TInt
+    as Text $ "pop {r0, r1}"
+    as Text $ "cmp r1, r0"
+    as Text $ "movge r0, #1"
+    as Text $ "movlt r0, #0"
+    as Text $ "push {r0}"
+    return TBool
   compile (AST.EEqual lhs rhs) = do
     tl <- compile lhs
     tr <- compile rhs
@@ -425,9 +466,9 @@ instance Compilable AST.Expression Type where
     case (length args) of
      0 -> as Text $ "@ no args"
      1 -> as Text $ "pop {r0}"
-     2 -> as Text $ "pop {r0, r1}"
-     3 -> as Text $ "pop {r0, r1, r2}"
-     _ -> as Text $ "pop {r0, r1, r2, r3}"
+     2 -> mapM_ (as Text) ["pop {r0}", "pop {r1}"]
+     3 -> mapM_ (as Text) ["pop {r2}", "pop {r1}", "pop {r0}"]
+     _ -> mapM_ (as Text) ["pop {r3}", "pop {r2}", "pop {r1}", "pop {r0}"]
     as Text $ "bl " ++ label
     as Text $ "push {r0}"
     return ret
