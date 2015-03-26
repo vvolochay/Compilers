@@ -10,6 +10,6 @@ int main()
     {
         printf("%d is %s\n", i, isPrime(i) ? "prime" : "not prime");
     }
-    printf("%d primes between 100 and 2000\n", numPrimes(100, 5000));
+    printf("%d primes between 100 and 5000\n", numPrimes(100, 5000));
 }
 

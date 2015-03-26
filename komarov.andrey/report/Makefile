@@ -1,7 +1,7 @@
 main: show
 
-all: report.tex
-	xelatex report.tex
+all: head.tex report.tex
+	xelatex -shell-escape head.tex
 
 show: all
-	evince report.pdf
+	evince head.pdf
