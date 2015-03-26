@@ -457,6 +457,34 @@ instance Compilable AST.Expression Type where
     as Text $ "movne r0, #0"
     as Text $ "push {r0}"
     return TBool
+  compile (AST.ENotEqual lhs rhs) = do
+    tl <- compile lhs
+    tr <- compile rhs
+    when (tl /= tr) $ throwError $ TypeMismatch tl tr
+    as Text $ "pop {r0, r1}"
+    as Text $ "teq r0, r1"
+    as Text $ "movne r0, #1"
+    as Text $ "moveq r0, #0"
+    as Text $ "push {r0}"
+    return TBool
+  compile (AST.EAnd lhs rhs) = do
+    tl <- compile lhs
+    tr <- compile rhs
+    when (tl /= TBool) $ throwError $ TypeMismatch tl TBool
+    when (tr /= TBool) $ throwError $ TypeMismatch tr TBool
+    as Text $ "pop {r0, r1}"
+    as Text $ "and r0, r1, r0"
+    as Text $ "push {r0}"
+    return TBool
+  compile (AST.EOr lhs rhs) = do
+    tl <- compile lhs
+    tr <- compile rhs
+    when (tl /= TBool) $ throwError $ TypeMismatch tl TBool
+    when (tr /= TBool) $ throwError $ TypeMismatch tr TBool
+    as Text $ "pop {r0, r1}"
+    as Text $ "orr r0, r1, r0"
+    as Text $ "push {r0}"
+    return TBool
   compile (AST.ECall name args) = do
     targs <- reverse <$> (mapM compile $ reverse args)
     (FType ret targs', label) <- getFun name
@@ -473,4 +501,3 @@ instance Compilable AST.Expression Type where
     as Text $ "bl " ++ label
     as Text $ "push {r0}"
     return ret
-  compile _ = undefined
