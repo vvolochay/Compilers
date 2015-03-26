@@ -244,8 +244,7 @@ instance Compilable AST.TopLevel () where
     tret <- getType ret
     targs <- mapM getType args
     updateForwardDecl name (FType tret targs)
-  compile (AST.FuncDef name ret args' body) = do
-    let args = reverse args'
+  compile (AST.FuncDef name ret args body) = do
     tret <- getType ret
     targs <- mapM getType (map fst args)
     fname <- updateFun name (FType tret targs)
@@ -266,7 +265,7 @@ instance Compilable AST.TopLevel () where
     let registerArgs = take 4 argPairs
     setOffset $ -(4 * length stackArgs + 8)
     -- TODO incorrect. "push{fp,lr}" splits args to reg/stack groups
-    mapM (uncurry updateLocalVar) stackArgs
+    mapM (uncurry updateLocalVar) $ reverse stackArgs
     setOffset 0
     mapM (uncurry updateLocalVar) registerArgs
     case length registerArgs of
