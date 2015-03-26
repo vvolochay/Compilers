@@ -37,10 +37,6 @@ size TInt = 4
 size TString = error "lol not implemented yet"
 size TVoid = error "lol void is not instantiable"
 
-encode :: Type -> String
-encode TInt = "word"
-encode v = error $ "global " ++ show v ++ " variables are not supported yet!"
-
 data FType = FType Type [Type]
            deriving (Show, Eq)
 
@@ -48,7 +44,6 @@ type Label = String
 
 data Symbol
   = GlobalVariable { varType :: Type,
-                     dataLabel :: Label,
                      textLabel :: Label}
   | LocalVariable { varType :: Type, varOffset :: Int }
   | ForwardDecl { funType :: FType, label :: Label }
@@ -90,7 +85,7 @@ setSymbols s = modify $ \env -> env { symbols = s }
 
 setEpilogue :: Label -> Compiler ()
 setEpilogue ep = do
-  env@Env { epilogue = epilogue } <- get
+  env <- get
   put $ env { epilogue = Just ep }
 
 symbol :: Id -> Compiler (Maybe Symbol)
@@ -131,10 +126,10 @@ updateGlobalVar name t = symbol name >>= \case
   Nothing -> do
              dLabel <- fresh name
              tLabel <- fresh name
-             setSymbol name $ GlobalVariable t dLabel tLabel
+             setSymbol name $ GlobalVariable t tLabel
              as Data $ dLabel ++ ": .word 0"
              as Text $ tLabel ++ ": .word " ++ dLabel
-  Just s' -> throwError $ AlreadyBound name s' $ GlobalVariable t "" ""
+  Just s' -> throwError $ AlreadyBound name s' $ GlobalVariable t ""
 
 updateLocalVar :: Id -> Type -> Compiler ()
 updateLocalVar name t = symbol name >>= \case
@@ -304,7 +299,7 @@ instance Compilable AST.Statement (Maybe Type) where
       as Text $ "@ storing to local " ++ name
       as Text $ "str r0, [fp, #-" ++ show off ++ "]"
       return Nothing
-    Just (GlobalVariable tp dLabel tLabel) -> do
+    Just (GlobalVariable tp tLabel) -> do
       as Text $ "@ " ++ show name ++ " := " ++ show expr
       rhs <- compile expr
       when (tp /= rhs) $ throwError $ TypeMismatch tp rhs
@@ -361,7 +356,7 @@ instance Compilable AST.Expression Type where
       as Text $ "ldr r0, [fp, #-" ++ show off ++ "]"
       as Text $ "push {r0}"
       return tp
-    Just (GlobalVariable tp dLabel tLabel) -> do
+    Just (GlobalVariable tp tLabel) -> do
       as Text $ "@ global " ++ show v
       as Text $ "ldr r0, " ++ tLabel
       as Text $ "ldr r0, [r0]"
