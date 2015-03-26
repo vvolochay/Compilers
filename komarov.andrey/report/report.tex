@@ -1,0 +1,69 @@
+\documentclass{article}
+
+\usepackage{syntax}
+
+\begin{document}
+
+\paragraph{Increase the two lengths}
+\setlength{\grammarparsep}{20pt plus 1pt minus 1pt} % increase separation between rules
+\setlength{\grammarindent}{12em} % increase separation between LHS/RHS 
+
+\begin{grammar}
+
+<prog> ::= <toplevel>*
+
+<toplevel> ::= <id> <id> `;'
+\alt <id> <id> `(' <args> `)' `;'
+\alt <id> <id> `(' <args> `)' `{' <stmt>* `}'
+
+<stmt> ::= `{' <stmt>* `}'
+\alt <id> <id> `;'
+\alt <id> `=' <expr> `;'
+\alt <expr> `;'
+\alt `if' `(' <expr> `)' <stmt> `else' <stmt>
+\alt `while' `(' <expr> `)' <stmt>
+\alt `return' <expr> `;'
+
+<expr> ::= <id> 
+\alt <num>
+\alt <bool>
+\alt `(' <expr> `)'
+\alt <expr> `+' <expr>
+\alt <expr> `-' <expr>
+\alt <expr> `*' <expr>
+\alt <expr> `<' <expr>
+\alt <expr> `>' <expr>
+\alt <expr> `==' <expr>
+\alt <expr> `!=' <expr>
+\alt <expr> `<=' <expr>
+\alt <expr> `>=' <expr>
+\alt <expr> `&&' <expr>
+\alt <expr> `||' <expr>
+\alt <id> `(' <ids> `)'
+
+<args> ::= $\varepsilon$
+\alt <id> <id>
+\alt <id> <id> `,' <args>
+
+<ids> ::= $\varepsilon$
+\alt <id>
+\alt <id> `,' <ids>
+
+<bool> ::= `true' | `false'
+
+<id> ::= <alpha>+
+
+<num> ::= <digit>+
+
+\end{grammar}
+
+\paragraph{Лол}
+
+Что хочется сделать дальше:
+\begin{itemize}
+\item Добавить строки (и массивы)
+\item Добавить возможность компилироваться в самостоятельный бинарник
+\item Переписать всё, потому что сейчас мерзко
+\end{itemize}
+
+\end{document}
