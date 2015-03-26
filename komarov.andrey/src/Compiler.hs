@@ -239,7 +239,7 @@ instance Compilable AST.Program () where
 
 instance Compilable AST.TopLevel () where
   compile (AST.VarDecl ty name) =
-    getType ty >>= updateLocalVar name
+    getType ty >>= updateGlobalVar name
   compile (AST.ForwardDecl name ret args) = do
     tret <- getType ret
     targs <- mapM getType args

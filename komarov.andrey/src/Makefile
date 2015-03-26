@@ -1,5 +1,5 @@
 all:
 	alex Lexer.x
 	happy Parser.y
-	ghc TestTypecheck
+	ghc TestCompiler
 
