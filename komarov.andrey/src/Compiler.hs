@@ -202,7 +202,8 @@ output (Output out) =
     toSect pairs = let (a:_,b) = unzip pairs in (a, b)
   
     sections :: [(Segment, [String])]
-    sections = map toSect $ groupBy ((==) `on` fst) out
+    sections = map toSect $ groupBy ((==) `on` fst)
+               $ sortBy (compare `on` fst) out
 
 data CompileError
   = CompileError
