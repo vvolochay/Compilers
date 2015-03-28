@@ -8,6 +8,7 @@ module Lexer (
 
 $digit = 0-9
 $alpha = [a-zA-Z]
+$alnum = [a-zA-Z0-9_]
 $eol = [\n]
 
 tokens :-
@@ -18,6 +19,8 @@ tokens :-
        ")"                      { \_ -> TokenRParen }
        "{"                      { \_ -> TokenLBrace }
        "}"                      { \_ -> TokenRBrace }
+       "["                      { \_ -> TokenLBracket }
+       "]"                      { \_ -> TokenRBracket }
        "+"                      { \_ -> TokenAdd }
        "-"                      { \_ -> TokenSub }
        "*"                      { \_ -> TokenMul }
@@ -38,7 +41,8 @@ tokens :-
        "true"                   { \_ -> TokenTrue }
        "false"                  { \_ -> TokenFalse }
        ","                      { \_ -> TokenComma }
-       $alpha+                  { \s -> TokenVar s }
+       "&"                      { \_ -> TokenAmp }
+       $alpha $alnum*           { \s -> TokenVar s }
 
 {
 
@@ -48,6 +52,8 @@ data Token = TokenNum Int
            | TokenRParen
            | TokenLBrace
            | TokenRBrace
+           | TokenLBracket
+           | TokenRBracket
            | TokenAdd
            | TokenSub
            | TokenMul
@@ -68,6 +74,7 @@ data Token = TokenNum Int
            | TokenTrue
            | TokenFalse
            | TokenComma
+           | TokenAmp
            deriving (Eq, Show)
 
 scanTokens = alexScanTokens

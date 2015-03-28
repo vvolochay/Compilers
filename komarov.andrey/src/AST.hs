@@ -1,5 +1,6 @@
 module AST (
   Id,
+  Type(..),
   Program(..),
   TopLevel(..),
   Statement(..),
@@ -11,20 +12,24 @@ type Id = String
 data Program = Program [TopLevel]
           deriving (Show)
 
+data Type
+  = Simple Id
+  | Pointer Type
+  deriving (Show)
+
 data TopLevel
-  = VarDecl Id Id
+  = VarDecl Type Id
   | ForwardDecl { name :: Id,
-                  ret :: Id,
-                  argsTypes :: [Id] }
+                  ret :: Type,
+                  argsTypes :: [Type] }
   | FuncDef { name :: Id,
-              ret :: Id,
-              args :: [(Id, Id)],
+              ret :: Type,
+              args :: [(Type, Id)],
               body :: [Statement]}
   deriving (Show)
 
 data Statement = SBlock [Statement]
-               | SVarDecl Id Id
-               | SAssignment Id Expression
+               | SVarDecl Type Id
                | SRawExpr Expression
                | SIfThenElse Expression Statement Statement
                | SWhile Expression Statement
@@ -46,4 +51,8 @@ data Expression = EVar Id
                  | EAnd Expression Expression
                  | EOr Expression Expression
                  | ECall Id [Expression]
+                 | EDeref Expression
+                 | EAddr Expression
+                 | EAssign Expression Expression
+                 | EArray Expression Expression
                  deriving (Show, Eq, Ord)

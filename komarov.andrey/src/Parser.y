@@ -17,9 +17,12 @@ import AST
         ')'             { TokenRParen }
         '{'             { TokenLBrace }
         '}'             { TokenRBrace }
+        '['             { TokenLBracket }
+        ']'             { TokenRBracket }
         '+'             { TokenAdd }
         '-'             { TokenSub }
         '*'             { TokenMul }
+        '&'             { TokenAmp }
         '<'             { TokenLess }
         '>'             { TokenGreater }
         '=='            { TokenEqual }
@@ -41,10 +44,15 @@ import AST
         ','             { TokenComma }
 
 %left ','
+%right '='
 %left '||' '&&'
-%left '<' '>' '<=' '>=' '==' '!='
+%nonassoc '==' '!='
+%nonassoc '<' '>' '<=' '>='
 %left '+' '-'
 %left '*'
+%left '&' DEREF
+%nonassoc '[' ']'
+
 
 %%
 
@@ -57,11 +65,11 @@ TopLevel        : VarDecl                       { $1 }
                 | ForwardDecl                   { $1 }
                 | FuncDef                       { $1 }
 
-VarDecl         : var var ';'                   { VarDecl $1 $2 }
+VarDecl         : Type var ';'                  { VarDecl $1 $2 }
 
-ForwardDecl     : var var '(' FuncArgs ')' ';'      { ForwardDecl $2 $1 (map fst $4) }
+ForwardDecl     : Type var '(' FuncArgs ')' ';' { ForwardDecl $2 $1 (map fst $4) }
 
-FuncDef         : var var '(' FuncArgs ')' '{' Stmts '}' { FuncDef $2 $1 $4 $7 }
+FuncDef         : Type var '(' FuncArgs ')' '{' Stmts '}' { FuncDef $2 $1 $4 $7 }
 
 Expr            : var                           { EVar $1 }
                 | num                           { EInt $1 }
@@ -80,14 +88,17 @@ Expr            : var                           { EVar $1 }
                 | Expr '&&' Expr                { EAnd $1 $3 }
                 | Expr '||' Expr                { EOr $1 $3 }
                 | var '(' FuncCallList ')'      { ECall $1 $3 }
+                | '&' Expr                      { EAddr $2 }
+                | '*' Expr %prec DEREF          { EDeref $2 }
+                | Expr '[' Expr ']'             { EArray $1 $3 }
+                | Expr '=' Expr                 { EAssign $1 $3 }
 
 FuncCallList    : {- empty -}                   { [] }
                 | Expr                          { [$1] }
                 | Expr ',' FuncCallList         { $1:$3 }
 
 Stmt            : '{' Stmts '}'                 { SBlock $2 }
-                | var var ';'                  { SVarDecl $1 $2 }
-                | var '=' Expr ';'              { SAssignment $1 $3}
+                | Type var ';'                  { SVarDecl $1 $2 }
                 | Expr ';'                      { SRawExpr $1 }
                 | if '(' Expr ')' Stmt else Stmt  { SIfThenElse $3 $5 $7 }
                 | while '(' Expr ')' Stmt       { SWhile $3 $5 }
@@ -97,8 +108,11 @@ Stmts           : {- empty -}                   { [] }
                 | Stmt Stmts                    { $1:$2 }
 
 FuncArgs        : {- empty -}                   { [] }
-                | var var                       { [($1, $2)] }
-                | var var ',' FuncArgs          { ($1, $2):$4 }
+                | Type var                      { [($1, $2)] }
+                | Type var ',' FuncArgs         { ($1, $2):$4 }
+
+Type            : var                           { Simple $1 }
+                | '*' Type                      { Pointer $2 }
 
 {
 parseError :: [Token] -> a
