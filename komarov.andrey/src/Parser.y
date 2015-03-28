@@ -50,7 +50,7 @@ import AST
 %nonassoc '<' '>' '<=' '>='
 %left '+' '-'
 %left '*'
-%left '&' DEREF
+%left '&' DEREF CAST
 %nonassoc '[' ']'
 
 
@@ -92,6 +92,7 @@ Expr            : var                           { EVar $1 }
                 | '*' Expr %prec DEREF          { EDeref $2 }
                 | Expr '[' Expr ']'             { EArray $1 $3 }
                 | Expr '=' Expr                 { EAssign $1 $3 }
+                | '(' Type ')' Expr %prec CAST  { ECast $2 $4 }
 
 FuncCallList    : {- empty -}                   { [] }
                 | Expr                          { [$1] }

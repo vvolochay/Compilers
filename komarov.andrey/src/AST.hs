@@ -55,4 +55,5 @@ data Expression = EVar Id
                  | EAddr Expression
                  | EAssign Expression Expression
                  | EArray Expression Expression
+                 | ECast Type Expression
                  deriving (Show, Eq, Ord)
