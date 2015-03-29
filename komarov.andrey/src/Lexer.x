@@ -4,7 +4,7 @@ module Lexer (
        Token(..), lexer
 ) where
 
-import ParserMonad
+import qualified Data.Set as S
 }
 
 %wrapper "monadUserState"
@@ -45,23 +45,34 @@ tokens :-
        "false"                  { r TokenFalse }
        ","                      { r TokenComma }
        "&"                      { r TokenAmp }
-       $alpha $alnum*           { \(_, _, _, s) l -> return $ TokenVar $ take l s }
+       $alpha $alnum*           { \(_, _, _, s) l -> var $ take l s }
 
 {
+
+var :: String -> Alex Token
+var s = do
+  tp <- isType s
+  return $ (if tp then TokenTyVar else TokenVar) s
 
 r :: Token -> AlexInput -> Int -> Alex Token
 r t _ _ = return t
 
-data AlexUserState = AlexUserState { wtf :: Int }
+data AlexUserState = AlexUserState { types :: S.Set String }
+
+isType :: String -> Alex Bool
+isType s = do
+  AlexUserState {types=t} <- alexGetUserState
+  return $ s `S.member` t
 
 alexInitUserState :: AlexUserState
-alexInitUserState = AlexUserState 0
+alexInitUserState = AlexUserState $ S.fromList ["int", "char", "bool"]
 
 alexEOF :: Alex Token
 alexEOF = return TokenEOF
 
 data Token = TokenNum Int
            | TokenVar String
+           | TokenTyVar String
            | TokenLParen
            | TokenRParen
            | TokenLBrace

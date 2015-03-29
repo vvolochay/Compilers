@@ -43,6 +43,7 @@ import AST
         true            { TokenTrue }
         false           { TokenFalse }
         var             { TokenVar $$ }
+        tyvar           { TokenTyVar $$ }
         ','             { TokenComma }
 
 %left ','
@@ -94,7 +95,7 @@ Expr            : var                           { EVar $1 }
                 | '*' Expr %prec DEREF          { EDeref $2 }
                 | Expr '[' Expr ']'             { EArray $1 $3 }
                 | Expr '=' Expr                 { EAssign $1 $3 }
---              | '(' Type ')' Expr %prec CAST  { ECast $2 $4 }
+                | '(' Type ')' Expr %prec CAST  { ECast $2 $4 }
 
 FuncCallList    : {- empty -}                   { [] }
                 | Expr                          { [$1] }
@@ -114,10 +115,10 @@ FuncArgs        : {- empty -}                   { [] }
                 | Type var                      { [($1, $2)] }
                 | Type var ',' FuncArgs         { ($1, $2):$4 }
 
-Type            : var                           { Simple $1 }
+Type            : tyvar                         { Simple $1 }
                 | '*' Type                      { Pointer $2 }
 
 {
 parseError :: Token -> Alex a
-parseError _ = error "Parse error"
+parseError t = error $ "Parse error on token " ++ show t
 }
