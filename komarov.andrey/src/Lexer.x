@@ -1,10 +1,13 @@
 {
 module Lexer (
-       Token(..), scanTokens
+       Alex(..), runAlex,
+       Token(..), lexer
 ) where
+
+import ParserMonad
 }
 
-%wrapper "basic"
+%wrapper "monadUserState"
 
 $digit = 0-9
 $alpha = [a-zA-Z]
@@ -14,37 +17,48 @@ $eol = [\n]
 tokens :-
        $eol                     ;
        $white+                  ;
-       $digit+                  { \s -> TokenNum (read s) }
-       "("                      { \_ -> TokenLParen }
-       ")"                      { \_ -> TokenRParen }
-       "{"                      { \_ -> TokenLBrace }
-       "}"                      { \_ -> TokenRBrace }
-       "["                      { \_ -> TokenLBracket }
-       "]"                      { \_ -> TokenRBracket }
-       "+"                      { \_ -> TokenAdd }
-       "-"                      { \_ -> TokenSub }
-       "*"                      { \_ -> TokenMul }
-       "<"                      { \_ -> TokenLess }
-       ">"                      { \_ -> TokenGreater }
-       "=="                     { \_ -> TokenEqual }
-       "<="                     { \_ -> TokenLessEq }
-       ">="                     { \_ -> TokenGreaterEq }
-       "!="                     { \_ -> TokenNotEqual }
-       "&&"                     { \_ -> TokenAnd }
-       "||"                     { \_ -> TokenOr }
-       "="                      { \_ -> TokenAssign }
-       ";"                      { \_ -> TokenSemicolon }
-       "if"                     { \_ -> TokenIf }
-       "else"                   { \_ -> TokenElse }
-       "while"                  { \_ -> TokenWhile }
-       "return"                 { \_ -> TokenReturn }
-       "true"                   { \_ -> TokenTrue }
-       "false"                  { \_ -> TokenFalse }
-       ","                      { \_ -> TokenComma }
-       "&"                      { \_ -> TokenAmp }
-       $alpha $alnum*           { \s -> TokenVar s }
+       $digit+                  { \(_, _, _, s) l -> return $ TokenNum (read $ take l s) }
+       "("                      { r TokenLParen }
+       ")"                      { r TokenRParen }
+       "{"                      { r TokenLBrace }
+       "}"                      { r TokenRBrace }
+       "["                      { r TokenLBracket }
+       "]"                      { r TokenRBracket }
+       "+"                      { r TokenAdd }
+       "-"                      { r TokenSub }
+       "*"                      { r TokenMul }
+       "<"                      { r TokenLess }
+       ">"                      { r TokenGreater }
+       "=="                     { r TokenEqual }
+       "<="                     { r TokenLessEq }
+       ">="                     { r TokenGreaterEq }
+       "!="                     { r TokenNotEqual }
+       "&&"                     { r TokenAnd }
+       "||"                     { r TokenOr }
+       "="                      { r TokenAssign }
+       ";"                      { r TokenSemicolon }
+       "if"                     { r TokenIf }
+       "else"                   { r TokenElse }
+       "while"                  { r TokenWhile }
+       "return"                 { r TokenReturn }
+       "true"                   { r TokenTrue }
+       "false"                  { r TokenFalse }
+       ","                      { r TokenComma }
+       "&"                      { r TokenAmp }
+       $alpha $alnum*           { \(_, _, _, s) l -> return $ TokenVar $ take l s }
 
 {
+
+r :: Token -> AlexInput -> Int -> Alex Token
+r t _ _ = return t
+
+data AlexUserState = AlexUserState { wtf :: Int }
+
+alexInitUserState :: AlexUserState
+alexInitUserState = AlexUserState 0
+
+alexEOF :: Alex Token
+alexEOF = return TokenEOF
 
 data Token = TokenNum Int
            | TokenVar String
@@ -75,8 +89,10 @@ data Token = TokenNum Int
            | TokenFalse
            | TokenComma
            | TokenAmp
+           | TokenEOF
            deriving (Eq, Show)
 
-scanTokens = alexScanTokens
+lexer :: (Token -> Alex a) -> Alex a
+lexer cont = (alexMonadScan >>= cont)
 
 }

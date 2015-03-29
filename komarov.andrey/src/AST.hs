@@ -15,7 +15,7 @@ data Program = Program [TopLevel]
 data Type
   = Simple Id
   | Pointer Type
-  deriving (Show)
+  deriving (Show, Eq, Ord)
 
 data TopLevel
   = VarDecl Type Id

@@ -8,6 +8,8 @@ import AST
 
 }
 
+%lexer { lexer } { TokenEOF }
+%monad { Alex } { >>= } { return }
 %name parse
 %tokentype { Token }
 %error { parseError }
@@ -92,7 +94,7 @@ Expr            : var                           { EVar $1 }
                 | '*' Expr %prec DEREF          { EDeref $2 }
                 | Expr '[' Expr ']'             { EArray $1 $3 }
                 | Expr '=' Expr                 { EAssign $1 $3 }
-                | '(' Type ')' Expr %prec CAST  { ECast $2 $4 }
+--              | '(' Type ')' Expr %prec CAST  { ECast $2 $4 }
 
 FuncCallList    : {- empty -}                   { [] }
                 | Expr                          { [$1] }
@@ -116,6 +118,6 @@ Type            : var                           { Simple $1 }
                 | '*' Type                      { Pointer $2 }
 
 {
-parseError :: [Token] -> a
+parseError :: Token -> Alex a
 parseError _ = error "Parse error"
 }
