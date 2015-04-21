@@ -1,0 +1,23 @@
+name:                FC
+version:             0.1.0.0
+synopsis:            Featherweight C compiler
+-- description:         
+homepage:            https://github.com/vvolochay/Compilers
+license:             PublicDomain
+license-file:        LICENSE
+author:              Andrey Komarov
+maintainer:          taukus@gmail.com
+-- copyright:           
+category:            Language
+build-type:          Simple
+-- extra-source-files:  
+cabal-version:       >=1.10
+
+executable FC
+  main-is:             Main.hs
+  other-modules:       Parser, Lexer
+  -- other-extensions:    
+  build-depends:       base >=4.8 && <4.9
+  build-tools:         happy, alex
+  hs-source-dirs:      src
+  default-language:    Haskell2010
