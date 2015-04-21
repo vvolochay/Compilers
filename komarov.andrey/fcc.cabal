@@ -1,4 +1,4 @@
-name:                FC
+name:                fcc
 version:             0.1.0.0
 synopsis:            Featherweight C compiler
 -- description:         
@@ -13,7 +13,7 @@ build-type:          Simple
 -- extra-source-files:  
 cabal-version:       >=1.10
 
-executable FC
+executable fcc
   main-is:             Main.hs
   other-modules:       Parser, Lexer, AST, ARM
   -- other-extensions:    
