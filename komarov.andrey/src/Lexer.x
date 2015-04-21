@@ -35,6 +35,7 @@ tokens :-
        "!="                     { r TokenNotEqual }
        "&&"                     { r TokenAnd }
        "||"                     { r TokenOr }
+       "^"                      { r TokenXor }
        "="                      { r TokenAssign }
        ";"                      { r TokenSemicolon }
        "if"                     { r TokenIf }
@@ -90,6 +91,7 @@ data Token = TokenNum Int
            | TokenNotEqual
            | TokenAnd
            | TokenOr
+           | TokenXor
            | TokenAssign
            | TokenSemicolon
            | TokenIf

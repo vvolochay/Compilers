@@ -4,12 +4,27 @@ module AST (
   Program(..),
   TopLevel(..),
   Statement(..),
-  Expression(..)
+  Expression(..),
+  ArithBinOp(..),
+  ArithCmpOp(..),
+  BoolBinOp(..),
+  EqOp(..),
+  notag
   ) where
 
 type Id = String
+type Tagged f a = (f a, a)
 
-data Program = Program [TopLevel]
+tag :: Tagged f a -> a
+tag = snd
+
+value :: Tagged f a -> f a
+value = fst
+
+notag :: f () -> Tagged f ()
+notag x = (x, ())
+
+data Program a = Program [TopLevel a]
           deriving (Show)
 
 data Type
@@ -17,7 +32,7 @@ data Type
   | Pointer Type
   deriving (Show, Eq, Ord)
 
-data TopLevel
+data TopLevel a
   = VarDecl Type Id
   | ForwardDecl { name :: Id,
                   ret :: Type,
@@ -25,35 +40,54 @@ data TopLevel
   | FuncDef { name :: Id,
               ret :: Type,
               args :: [(Type, Id)],
-              body :: [Statement]}
+              body :: [Statement a]}
   deriving (Show)
 
-data Statement = SBlock [Statement]
-               | SVarDecl Type Id
-               | SRawExpr Expression
-               | SIfThenElse Expression Statement Statement
-               | SWhile Expression Statement
-               | SReturn Expression
-               deriving (Show)
+data Statement a = SBlock [Statement a]
+                 | SVarDecl Type Id
+                 | SAssignment Id (Tagged Expression a)
+                 | SRawExpr (Tagged Expression a)
+                 | SIfThenElse (Tagged Expression a) (Statement a) (Statement a)
+                 | SWhile (Tagged Expression a) (Statement a)
+                 | SReturn (Tagged Expression a)
+                 deriving (Show)
 
-data Expression = EVar Id
-                 | EInt Int
-                 | EBool Bool
-                 | EAdd Expression Expression
-                 | ESub Expression Expression
-                 | EMul Expression Expression
-                 | ELess Expression Expression
-                 | EGreater Expression Expression
-                 | EEqual Expression Expression
-                 | ELessEq Expression Expression
-                 | EGreaterEq Expression Expression
-                 | ENotEqual Expression Expression
-                 | EAnd Expression Expression
-                 | EOr Expression Expression
-                 | ECall Id [Expression]
-                 | EDeref Expression
-                 | EAddr Expression
-                 | EAssign Expression Expression
-                 | EArray Expression Expression
-                 | ECast Type Expression
-                 deriving (Show, Eq, Ord)
+data ArithBinOp = AddOp | SubOp | MulOp
+                deriving (Eq, Ord)
+data BoolBinOp = OrOp | AndOp | XorOp
+               deriving (Eq, Ord)
+data ArithCmpOp = LessOp | LessEqOp | GreaterOp | GreaterEqOp
+                deriving (Eq, Ord)
+data EqOp = EqOp | NeqOp
+          deriving (Eq, Ord)
+
+instance Show ArithBinOp where
+  show AddOp = "+"
+  show SubOp = "-"
+  show MulOp = "*"
+
+instance Show BoolBinOp where
+  show OrOp = "||"
+  show AndOp = "&&"
+  show XorOp = "^"
+
+instance Show ArithCmpOp where
+  show LessOp = "<"
+  show LessEqOp = "<="
+  show GreaterOp = ">"
+  show GreaterEqOp = ">="
+
+instance Show EqOp where
+  show EqOp = "=="
+  show NeqOp = "!="
+
+data Expression a = EVar Id
+                  | ELitInt Int
+                  | ELitBool Bool
+                  | EArith ArithBinOp (Tagged Expression a) (Tagged Expression a)
+                  | EBool BoolBinOp (Tagged Expression a) (Tagged Expression a)
+                  | EArithCmp ArithCmpOp (Tagged Expression a) (Tagged Expression a)
+                  | EEqual EqOp (Tagged Expression a) (Tagged Expression a)
+                  | ECall Id [(Tagged Expression a)]
+                  | EAssign (Tagged Expression a) (Tagged Expression a)
+                  deriving (Show, Eq, Ord)

@@ -5,7 +5,7 @@ lexer: Lexer.x
 	alex Lexer.x
 
 parser: Parser.y
-	happy Parser.y
+	happy Parser.y -ilog
 
 clean:
 	rm -f *.o *.hi Lexer.hs Parser.hs TestCompiler
