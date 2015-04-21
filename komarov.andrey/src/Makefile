@@ -8,5 +8,5 @@ parser: Parser.y
 	happy Parser.y -ilog
 
 clean:
-	rm -f *.o *.hi Lexer.hs Parser.hs TestCompiler
+	rm -f *.o *.hi log Lexer.hs Parser.hs TestCompiler
 

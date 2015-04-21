@@ -5,3 +5,6 @@ all: head.tex report.tex
 
 show: all
 	evince head.pdf
+
+clean:
+	rm -rf *.aux *.log *.pyg *.pdf
