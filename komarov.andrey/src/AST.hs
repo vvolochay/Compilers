@@ -45,7 +45,7 @@ data TopLevel a
   | FuncDef { name :: Id,
               ret :: Type,
               args :: [(Type, Id)],
-              body :: [Statement a]}
+              body :: Statement a}
   deriving (Show)
 
 data Statement a = SBlock [Statement a]

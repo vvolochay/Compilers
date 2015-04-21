@@ -71,7 +71,7 @@ TopLevelDefs    : {- empty -}                   { [] }
 TopLevel        :: { TopLevel () }
 TopLevel        : Type var ';'                  { VarDecl $1 $2 }
                 | Type var '(' FuncArgs ')' ';' { ForwardDecl $2 $1 (map fst $4) }
-                | Type var '(' FuncArgs ')' '{' Stmts '}' { FuncDef $2 $1 $4 $7 }
+                | Type var '(' FuncArgs ')' '{' Stmts '}' { FuncDef $2 $1 $4 (SBlock $7) }
 
 Expr            :: { Expression () }
 Expr            : var                           { EVar $1 }
