@@ -92,11 +92,11 @@ Expr            : var                           { EVar $1 }
                 | Expr '==' Expr                { EEqual EqOp (notag $1) (notag $3) }
                 | Expr '!=' Expr                { EEqual NeqOp (notag $1) (notag $3) }
                 | var '(' FuncCallList ')'      { ECall $1 (map notag $3) }
---                | '&' Expr                      { EAddr $2 }
---                | '*' Expr %prec DEREF          { EDeref $2 }
---                | Expr '[' Expr ']'             { EArray $1 $3 }
+                | '&' Expr                      { EAddr (notag $2) }
+                | '*' Expr %prec DEREF          { EDeref (notag $2) }
+                | Expr '[' Expr ']'             { EArray (notag $1) (notag $3) }
                 | Expr '=' Expr                 { EAssign (notag $1) (notag $3) }
---                | '(' Type ')' Expr %prec CAST  { ECast $2 $4 }
+                | '(' Type ')' Expr %prec CAST  { ECast $2 (notag $4) }
 
 FuncCallList    :: { [Expression ()] }
 FuncCallList    : {- empty -}                   { [] }

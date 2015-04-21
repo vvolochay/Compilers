@@ -90,4 +90,8 @@ data Expression a = EVar Id
                   | EEqual EqOp (Tagged Expression a) (Tagged Expression a)
                   | ECall Id [(Tagged Expression a)]
                   | EAssign (Tagged Expression a) (Tagged Expression a)
+                  | EDeref (Tagged Expression a)
+                  | EAddr (Tagged Expression a)
+                  | EArray (Tagged Expression a) (Tagged Expression a)
+                  | ECast Type (Tagged Expression a)
                   deriving (Show, Eq, Ord)
