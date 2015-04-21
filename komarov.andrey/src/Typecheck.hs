@@ -11,7 +11,11 @@ import Control.Monad.Except
 
 import AST
 
-data Env = Env
+data Symbol = Symbol
+              deriving (Eq, Ord)
+
+data Env = Env {
+               }
 
 data Value = LValue | RValue
 
