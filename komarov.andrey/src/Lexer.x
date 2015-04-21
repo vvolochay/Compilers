@@ -1,6 +1,6 @@
 {
 module Lexer (
-       Alex(..), runAlex,
+       Alex(..), runAlex, alexError,
        Token(..), lexer
 ) where
 

@@ -1,5 +1,6 @@
 module AST (
   Id,
+  Tagged,
   Type(..),
   Program(..),
   TopLevel(..),
@@ -9,7 +10,7 @@ module AST (
   ArithCmpOp(..),
   BoolBinOp(..),
   EqOp(..),
-  notag
+  notag, with
   ) where
 
 type Id = String
@@ -24,12 +25,16 @@ value = fst
 notag :: f () -> Tagged f ()
 notag x = (x, ())
 
+with :: f a -> a -> Tagged f a
+with = (,)
+
 data Program a = Program [TopLevel a]
           deriving (Show)
 
 data Type
-  = Simple Id
-  | Pointer Type
+  = TInt
+  | TBool
+  | TPointer Type
   deriving (Show, Eq, Ord)
 
 data TopLevel a

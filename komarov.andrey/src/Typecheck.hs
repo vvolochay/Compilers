@@ -7,44 +7,48 @@ module Typecheck (
 
 import Control.Applicative
 import Control.Monad.State
-import Control.Monad.Error
+import Control.Monad.Except
 
-import qualified AST
+import AST
 
-data Type
-  = TInt
-  | TBool
-  | TChar
-  | TVoid
-  | TPointer Type
-  | TFun Type [Type]
+data Env = Env
 
-type Id = String
+data Value = LValue | RValue
 
-data Arith = Add | Sub | Mul
-
-data Compare = Less | Greater | LessEq | GreaterEq
-
-data BoolOp = Or | And
-
-data Value = L | R
+data T = T Value Type
 
 data CompilationError
   = CompilationError
   deriving (Show)
     
-instance Error CompilationError where
-  noMsg = CompilationError
-
-data Env = Env
-
 newtype Typechecker a = Typecheker {
   runTypechecker ::
-     ErrorT CompilationError (
+     ExceptT CompilationError (
        State Env) a }
                       deriving (
   Functor, Applicative, Monad, MonadError CompilationError,
   MonadState Env)
 
 class Typecheckable f t | f -> t where
-  typecheck :: f -> Typechecker t
+  typecheck :: f () -> Typechecker (Tagged f t)
+
+{-
+data Expression a = EVar Id
+                  | ELitInt Int
+                  | ELitBool Bool
+                  | EArith ArithBinOp (Tagged Expression a) (Tagged Expression a)
+                  | EBool BoolBinOp (Tagged Expression a) (Tagged Expression a)
+                  | EArithCmp ArithCmpOp (Tagged Expression a) (Tagged Expression a)
+                  | EEqual EqOp (Tagged Expression a) (Tagged Expression a)
+                  | ECall Id [(Tagged Expression a)]
+                  | EAssign (Tagged Expression a) (Tagged Expression a)
+                  | EDeref (Tagged Expression a)
+                  | EAddr (Tagged Expression a)
+                  | EArray (Tagged Expression a) (Tagged Expression a)
+                  | ECast Type (Tagged Expression a)
+-}
+
+instance Typecheckable Expression T where
+  typecheck (EVar var) = _
+  typecheck (ELitInt i) = return $ (ELitInt i) `with` (T RValue (Simple "int"))
+  typecheck (ELitBool b) = return $ (ELitBool b) `with` (T RValue (Simple "bool"))

@@ -10,7 +10,7 @@ import AST
 
 %lexer { lexer } { TokenEOF }
 %monad { Alex } { >>= } { return }
-%name parse
+%name parseAlex
 %tokentype { Token }
 %error { parseError }
 
@@ -121,10 +121,13 @@ FuncArgs        : {- empty -}                   { [] }
                 | Type var ',' FuncArgs         { ($1, $2):$4 }
 
 Type            :: { Type }
-Type            : tyvar                         { Simple $1 }
-                | Type '*'                      { Pointer $1 }
+Type            : tyvar                         { case $1 of { "int" -> TInt; "bool" -> TBool; n -> error $ "INTERNAL COMPILER ERROR" ++ n } }
+                | Type '*'                      { TPointer $1 }
 
 {
 parseError :: Token -> Alex a
-parseError t = error $ "Parse error on token " ++ show t
+parseError t = alexError $ "Parse error on token " ++ show t
+
+parse :: String -> Either String (Program ())
+parse s = runAlex s parseAlex
 }
