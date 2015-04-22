@@ -10,7 +10,8 @@ module FCC.AST (
   ArithCmpOp(..),
   BoolBinOp(..),
   EqOp(..),
-  notag, with
+  notag, with,
+  toPrimitiveType
   ) where
 
 type Id = String
@@ -34,8 +35,15 @@ data Program a = Program [TopLevel a]
 data Type
   = TInt
   | TBool
+  | TVoid
   | TPointer Type
   deriving (Show, Eq, Ord)
+
+toPrimitiveType :: String -> Type
+toPrimitiveType "int" = TInt
+toPrimitiveType "bool" = TBool
+toPrimitiveType "void" = TVoid
+toPrimitiveType t = error $ "INTERNAL COMPILER ERROR: type <" ++ t ++ "> not recognized"
 
 data TopLevel a
   = VarDecl Type Id

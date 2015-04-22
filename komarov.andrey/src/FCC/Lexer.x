@@ -66,7 +66,7 @@ isType s = do
   return $ s `S.member` t
 
 alexInitUserState :: AlexUserState
-alexInitUserState = AlexUserState $ S.fromList ["int", "char", "bool"]
+alexInitUserState = AlexUserState $ S.fromList ["int", "void", "bool"]
 
 alexEOF :: Alex Token
 alexEOF = return TokenEOF

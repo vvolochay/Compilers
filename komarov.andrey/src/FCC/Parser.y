@@ -121,7 +121,7 @@ FuncArgs        : {- empty -}                   { [] }
                 | Type var ',' FuncArgs         { ($1, $2):$4 }
 
 Type            :: { Type }
-Type            : tyvar                         { case $1 of { "int" -> TInt; "bool" -> TBool; n -> error $ "INTERNAL COMPILER ERROR" ++ n } }
+Type            : tyvar                         { toPrimitiveType $1 }
                 | Type '*'                      { TPointer $1 }
 
 {
