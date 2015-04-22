@@ -11,7 +11,7 @@ module FCC.AST (
   ArithCmpOp(..),
   BoolBinOp(..),
   EqOp(..),
-  notag, with,
+  notag, with, value,
   toPrimitiveType
   ) where
 
@@ -109,3 +109,5 @@ data Expression a = EVar Id
                   | EArray (Tagged Expression a) (Tagged Expression a)
                   | ECast Type (Tagged Expression a)
                   deriving (Show, Eq, Ord, Functor)
+
+  
