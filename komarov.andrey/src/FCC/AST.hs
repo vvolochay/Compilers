@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 module FCC.AST (
   Id,
   Tagged,
@@ -30,7 +31,7 @@ with :: f a -> a -> Tagged f a
 with = (,)
 
 data Program a = Program [TopLevel a]
-          deriving (Show)
+          deriving (Show, Functor)
 
 data Type
   = TInt
@@ -54,7 +55,7 @@ data TopLevel a
               ret :: Type,
               args :: [(Type, Id)],
               body :: Statement a}
-  deriving (Show)
+  deriving (Show, Functor)
 
 data Statement a = SBlock [Statement a]
                  | SVarDecl Type Id
@@ -63,7 +64,7 @@ data Statement a = SBlock [Statement a]
                  | SIfThenElse (Tagged Expression a) (Statement a) (Statement a)
                  | SWhile (Tagged Expression a) (Statement a)
                  | SReturn (Tagged Expression a)
-                 deriving (Show)
+                 deriving (Show, Functor)
 
 data ArithBinOp = AddOp | SubOp | MulOp
                 deriving (Eq, Ord)
@@ -107,4 +108,4 @@ data Expression a = EVar Id
                   | EAddr (Tagged Expression a)
                   | EArray (Tagged Expression a) (Tagged Expression a)
                   | ECast Type (Tagged Expression a)
-                  deriving (Show, Eq, Ord)
+                  deriving (Show, Eq, Ord, Functor)
