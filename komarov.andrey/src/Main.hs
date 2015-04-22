@@ -1,6 +1,6 @@
 module Main where
 
-import Parser
+import FCC.Parser
 
 main :: IO ()
 main = print "Hello"

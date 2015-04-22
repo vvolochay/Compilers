@@ -1,10 +1,10 @@
 {
-module Parser (
+module FCC.Parser (
        parse
 ) where
 
-import Lexer
-import AST
+import FCC.Lexer
+import FCC.AST
 
 }
 

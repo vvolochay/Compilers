@@ -1,4 +1,4 @@
-module ARM (
+module FCC.ARM (
   Assembly(..),
   Segment(..)
   ) where

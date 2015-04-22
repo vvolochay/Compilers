@@ -11,13 +11,20 @@ maintainer:          taukus@gmail.com
 category:            Language
 build-type:          Simple
 -- extra-source-files:  
-cabal-version:       >=1.10
+cabal-version:       >=1.20
 
 executable fcc
-  main-is:             Main.hs
-  other-modules:       Parser, Lexer, AST, ARM
-  -- other-extensions:    
-  build-depends:       base >=4.8 && <5, array >= 0.5, containers >= 0.5
-  build-tools:         happy, alex
-  hs-source-dirs:      src
-  default-language:    Haskell2010
+  main-is:           Main.hs
+  other-modules:     FCC.Parser, FCC.Lexer, FCC.AST, FCC.ARM
+  build-depends:     base >=4.8 && <5, array, containers
+  build-tools:       happy, alex
+  hs-source-dirs:    src
+  default-language:  Haskell2010
+
+test-suite test-parser
+  type:              exitcode-stdio-1.0
+  main-is:           TestParser.hs
+  hs-source-dirs:    src, tests
+  other-modules:     FCC.Parser, FCC.Lexer
+  build-depends:     base >= 4.8 && < 5, directory, array, containers
+  default-language:  Haskell2010

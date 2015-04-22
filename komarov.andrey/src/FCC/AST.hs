@@ -1,4 +1,4 @@
-module AST (
+module FCC.AST (
   Id,
   Tagged,
   Type(..),

@@ -1,5 +1,5 @@
 {
-module Lexer (
+module FCC.Lexer (
        Alex(..), runAlex, alexError,
        Token(..), lexer
 ) where
