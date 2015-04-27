@@ -37,7 +37,7 @@ checkFile path = do
   print res
   case res of
    Right p -> case parse (show p) of
-     Right p' -> when (show p /= show p') $ print p >> print p' >> exitFailure
+     Right p' -> when (p /= p') $ print p >> print p' >> exitFailure
      Left _ -> print p >> exitFailure
    Left _ -> return ()
 
