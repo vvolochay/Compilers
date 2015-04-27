@@ -1,7 +1,11 @@
 module Main where
 
 import FCC.Parser
-import FCC.PrettyPrinter
 
 main :: IO ()
-main = print "Hello"
+main = do
+  input <- getContents
+  let p = parse input
+  case p of
+   Left e -> putStrLn $ "failed to parse: " ++ show e
+   Right x -> print x

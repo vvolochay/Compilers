@@ -34,8 +34,8 @@ test-suite test-pretty-printer
   type:              exitcode-stdio-1.0
   main-is:           TestPrettyPrinter.hs
   hs-source-dirs:    src, tests
-  other-modules:     FCC.PrettyPrinter, FCC.AST
+  other-modules:     FCC.PrettyPrinter, FCC.AST, FCC.Parser, FCC.Lexer
   build-depends:     base >= 4.8 && < 5, test-framework-quickcheck2,
                      test-framework-hunit, QuickCheck, test-framework, HUnit,
-                     derive
+                     derive, array, containers, directory
   default-language:  Haskell2010
