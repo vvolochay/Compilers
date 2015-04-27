@@ -133,17 +133,17 @@ instance Show (Expression a) where
   show = ppExpr
 
 ppStmt :: Int -> Statement a -> String
-ppStmt off (SBlock stmts) = "{\n" ++ (intercalate "\n" $ map (ppStmt (off + 4)) stmts) ++ "\n}"
+ppStmt off (SBlock stmts) = replicate off ' ' ++ "{\n" ++ (intercalate "\n" $ map (ppStmt (off + 4)) stmts) ++ "\n" ++ replicate off ' ' ++ "}"
 ppStmt off (SVarDecl tp id) = replicate off ' ' ++ show tp ++ " " ++ id ++ ";"
 ppStmt off (SRawExpr e) = replicate off ' ' ++ show (value e) ++ ";"
-ppStmt off (SIfThenElse cond thn els) = if' ++ "\n" ++ then' ++ "\nelse" ++ else' where
+ppStmt off (SIfThenElse cond thn els) = if' ++ "\n" ++ then' ++ "\n" ++ replicate off ' ' ++ "else\n" ++ else' where
   if' = replicate off ' ' ++ "if (" ++ (show (value cond)) ++ ")"
   then' = ppStmt (off + 4) thn
   else' = ppStmt (off + 4) els
 ppStmt off (SWhile cond body) = while' ++ "\n" ++ body' where
   while' = replicate off ' ' ++ "while (" ++ show (value cond) ++ ")"
   body' = ppStmt (off + 4) body
-ppStmt off (SReturn ret) = replicate off ' ' ++ show (value ret) ++ ";"
+ppStmt off (SReturn ret) = replicate off ' ' ++ "return " ++ show (value ret) ++ ";"
 
 instance Show (Statement a) where
   show = ppStmt 0
@@ -152,7 +152,7 @@ ppTopLevel :: TopLevel a -> String
 ppTopLevel (VarDecl tp id) = show tp ++ " " ++ id ++ ";"
 ppTopLevel ForwardDecl{..} = show ret ++ " " ++ name ++ "(" ++ (intercalate ", " args') ++ ");" where 
   args' = zipWith (\t i -> show t ++ " arg" ++ show i) argsTypes [1..]
-ppTopLevel FuncDef{..} = show ret ++ " " ++ name ++ "(" ++ (intercalate ", " (map showPair args)) ++ ")" ++ show body where
+ppTopLevel FuncDef{..} = show ret ++ " " ++ name ++ "(" ++ (intercalate ", " (map showPair args)) ++ ") " ++ show body where
   showPair (a, b) = show a ++ " " ++ b
 
 instance Show (TopLevel a) where
