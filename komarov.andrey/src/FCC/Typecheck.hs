@@ -23,21 +23,23 @@ class Typecheckable (f :: * -> *) where
   typecheck :: f a -> Typecheck (f a, Type)
 
 instance Typecheckable Expr where
-  typecheck 
+  typecheck (Var v) = _
+  typecheck (Lit i) = return (Lit i, TInt)
+  typecheck (LitBool b) = return (LitBool b, TBool)
+  typecheck (Lam t s) = _
+  typecheck Empty = return (Empty, TVoid)
+  typecheck (Seq e1 e2) = do
+    (e1', _) <- typecheck e1
+    (e2', _) <- typecheck e2
+    return $ (Seq e1' e2', TVoid)
+  typecheck (Call (Var name) args) = _
+  typecheck (Call f args) = throwError $ NotCallable f
+  typecheck (Eq e1 e2) = _
+  typecheck (While cond body) = _
+  typecheck (If cond thn els) = _
+  typecheck (Assign (Var v) val) = _
+  typecheck (Assign (Array a i) val) = _
+  typecheck (Assign dst val) = throwError $ NotAssignable dst
+  typecheck (Array a i) = _
+  typecheck (Return e) = _
 
-{-
-  = Var a
-  | Lit Int
-  | LitBool Bool
-  | Lam Type (Scope () Expr a)
-  | Empty
-  | Seq (Expr a) (Expr a)
-  | Call (Expr a) [Expr a]
-  | Eq (Expr a) (Expr a) -- костыль во имя нереализации ad-hoc полиморфизма
-  | While (Expr a) (Expr a)
-  | If (Expr a) (Expr a) (Expr a)
-  | Assign (Expr a) (Expr a)
-  | Array (Expr a) (Expr a)
-  | Return (Expr a)
-  | Native [String]
--}

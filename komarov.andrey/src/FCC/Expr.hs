@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveTraversable #-}
 module FCC.Expr (
   Expr(..),
   declVar,
@@ -27,7 +28,7 @@ data Expr a
   | Assign (Expr a) (Expr a)
   | Array (Expr a) (Expr a)
   | Return (Expr a)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Show, Read, Foldable, Traversable)
 
 instance Functor Expr where
   fmap = liftM

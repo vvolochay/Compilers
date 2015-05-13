@@ -8,14 +8,15 @@ import Data.List (intercalate)
 data Type
   = TInt
   | TBool
+  | TVoid
   | TArray Type
-  | TTuple [Type]
-  | TFun Type Type
+  | TFun [Type] Type
   deriving (Eq, Ord, Show, Read)
 
 toPrimitiveType :: String -> Type
 toPrimitiveType "int" = TInt
 toPrimitiveType "bool" = TBool
+toPrimitiveType "void" = TVoid
 toPrimitiveType t = error $ "BEDA " ++ t
 
 {-
