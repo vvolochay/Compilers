@@ -51,7 +51,7 @@ instance Monad Expr where
   Assign dest src >>= f = Assign (dest >>= f) (src >>= f)
   Array arr ind >>= f = Array (arr >>= f) (ind >>= f)
   Return e >>= f = Return $ e >>= f
-  Native xs >>= _ = Native xs
+  Native xs >>= f = Native xs
 
 declVar :: Eq a => Type -> a -> Expr a -> Expr a
 declVar t x e = Lam t $ abstract1 x e

@@ -26,7 +26,6 @@ import FCC.Type
         '+'             { TokenAdd }
         '-'             { TokenSub }
         '*'             { TokenMul }
-        '&'             { TokenAmp }
         '!'             { TokenNot }
         '<'             { TokenLess }
         '>'             { TokenGreater }
@@ -58,11 +57,14 @@ import FCC.Type
 %nonassoc '<' '>' '<=' '>='
 %left '+' '-'
 %left '*'
-%left '&' DEREF CAST '!'
+%left '!'
 %nonassoc '[' ']'
 
 
 %%
+
+Prog            :: { Program String }
+Prog            : TopLevels                     { program $1 }
 
 Expr            :: { Expr String }
 Expr            : var                           { Var $1 }
@@ -75,14 +77,15 @@ Expr            : var                           { Var $1 }
                 | Expr '*' Expr                 { Call (Var "_builtin_mul") [$1, $3] }
                 | Expr '||' Expr                { Call (Var "_builtin_or") [$1, $3] }
                 | Expr '&&' Expr                { Call (Var "_builtin_and") [$1, $3] }
-                | Expr '^' Expr                 { Call (Var "_builtin_xor") [$1, $3] }
+                | Expr '^' Expr                 { Call (Var "_builtin_xor") [$1, $3] } 
+                | '!' Expr                      { Call (Var "_builtin_not") [$2] }
                 | Expr '<' Expr                 { Call (Var "_builtin_less") [$1, $3] }
                 | Expr '<=' Expr                { Call (Var "_builtin_lesseq") [$1, $3] }
                 | Expr '>' Expr                 { Call (Var "_builtin_greater") [$1, $3] }
                 | Expr '>=' Expr                { Call (Var "_builtin_greatereq") [$1, $3] }
                 | Expr '==' Expr                { Eq $1 $3 }
                 | Expr '!=' Expr                { Call (Var "_builtin_not") [Eq $1 $3] }
-                | var '(' FuncCallList ')'      { Call (Var $1) $3 }
+                | var '(' FunCallList ')'       { Call (Var $1) $3 }
                 | Expr '[' Expr ']'             { Array $1 $3 }
                 | Expr '=' Expr                 { Assign $1 $3 }
                 | '{' Stmts '}'                 { $2 }
@@ -98,43 +101,33 @@ Stmts           : {- empty -}                   { Empty }
                 | Stmt Stmts                    { Seq $1 $2 }
                 | Type var ';' Stmts            { declVar $1 $2 $4 }
 
-FuncCallList    :: { [Expr String] }
-FuncCallList    : {- empty -}                   { [] }
+FunCallList    :: { [Expr String] }
+FunCallList    : {- empty -}                   { [] }
                 | Expr                          { [$1] }
-                | Expr ',' FuncCallList         { $1:$3 }
+                | Expr ',' FunCallList         { $1:$3 }
 
 Type            :: { Type }
 Type            : tyvar                         { toPrimitiveType $1 }
                 | Type '*'                      { TArray $1 }
 
-{-
+TopLevel        :: { TopLevel String }
+TopLevel        : Type var ';'                  { DeclVar $1 $2 }
+                | Type var '(' FunArgsList ')' '{' Stmts '}' { DeclFun $2 $1 $4 $7 }
 
-Prog            :: { Program () }
-Prog            : TopLevelDefs                  { Program $1 }
+FunArgsList     :: { [(String, Type)] }
+FunArgsList     : {- empty -}                   { [] }
+                | Type var                      { [($2, $1)] }
+                | Type var ',' FunArgsList      { ($2, $1):$4 }
 
-TopLevelDefs    :: { [TopLevel ()] }
-TopLevelDefs    : {- empty -}                   { [] }
-                | TopLevel TopLevelDefs         { $1:$2 }
-
-TopLevel        :: { TopLevel () }
-TopLevel        : Type var ';'                  { VarDecl $1 $2 }
-                | Type var '(' FuncArgs ')' ';' { ForwardDecl $2 $1 (map fst $4) }
-                | Type var '(' FuncArgs ')' '{' Stmts '}' { FuncDef $2 $1 $4 (SBlock $7) }
-
-
-
-
-FuncArgs        :: { [(Type, Id)] }
-FuncArgs        : {- empty -}                   { [] }
-                | Type var                      { [($1, $2)] }
-                | Type var ',' FuncArgs         { ($1, $2):$4 }
-
- -}
+TopLevels       :: { [TopLevel String] }
+TopLevels       : {- empty -}                   { [] }
+                | TopLevel TopLevels            { $1:$2 }
 
 {
 parseError :: Token -> Alex a
 parseError t = alexError $ "Parse error on token " ++ show t
 
-parse :: String -> Either String (Expr String)
+parse :: String -> Either String (Program String)
 parse s = runAlex s parseAlex
+
 }

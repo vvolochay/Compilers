@@ -1,7 +1,9 @@
 module FCC.Program (
   Function(..),
   Program(..),
+  TopLevel(..),
   function,
+  program,
   ) where
 
 import Data.List (elemIndex)
@@ -23,3 +25,14 @@ data Program a =
 function :: Eq a => [(a, Type)] -> Type -> Expr a -> Function a
 function args ret body = Function (map snd args) ret $
                          abstract (`elemIndex` (map fst args)) body
+
+data TopLevel a
+  = DeclVar Type a
+  | DeclFun a Type [(a, Type)] (Expr a)
+
+-- TODO перестать считать, что всё уникально
+program :: Ord a => [TopLevel a] -> Program a
+program ts = Program funs vars where
+  vars = M.fromList [(a, t) | DeclVar t a <- ts]
+  funs = M.fromList [(name, function args ret body) | DeclFun name ret args body <- ts]
+
