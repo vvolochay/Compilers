@@ -9,6 +9,7 @@ import FCC.Type
 import FCC.TypecheckError
 import FCC.Expr
 
+import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
 
@@ -23,10 +24,12 @@ lookupType :: Ord a => a -> Context a -> Maybe Type
 lookupType v ctx = M.lookup v (bindings ctx)
 
 newtype Typecheck a = Typecheck {
-  runTypecheck :: ReaderT (Context String) (Except TypecheckError) a
+  runTypecheck :: StateT Int (ReaderT (Context String) (Except TypecheckError)) a
   } deriving (Functor, Applicative, Monad,
-              MonadError TypecheckError, MonadReader (Context String))
+              MonadError TypecheckError, MonadReader (Context String), MonadState Int)
 
+-- TODO Сделать слева более предсказуемый тип, для которого можно
+-- генерить свежие имена (да хоть тупо String)
 class Typecheckable (f :: * -> *) where
   typecheck :: f a -> Typecheck (f a, Type)
 
