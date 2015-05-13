@@ -46,6 +46,7 @@ tokens :-
        "false"                  { r TokenFalse }
        ","                      { r TokenComma }
        "&"                      { r TokenAmp }
+       "!"                      { r TokenNot }
        $alpha $alnum*           { \(_, _, _, s) l -> var $ take l s }
 
 {
@@ -89,6 +90,7 @@ data Token = TokenNum Int
            | TokenLessEq
            | TokenGreaterEq
            | TokenNotEqual
+           | TokenNot
            | TokenAnd
            | TokenOr
            | TokenXor

@@ -4,7 +4,9 @@ module FCC.Parser (
 ) where
 
 import FCC.Lexer
-import FCC.AST
+import FCC.Expr
+import FCC.Program
+import FCC.Type
 
 }
 
@@ -25,6 +27,7 @@ import FCC.AST
         '-'             { TokenSub }
         '*'             { TokenMul }
         '&'             { TokenAmp }
+        '!'             { TokenNot }
         '<'             { TokenLess }
         '>'             { TokenGreater }
         '=='            { TokenEqual }
@@ -55,11 +58,56 @@ import FCC.AST
 %nonassoc '<' '>' '<=' '>='
 %left '+' '-'
 %left '*'
-%left '&' DEREF CAST
+%left '&' DEREF CAST '!'
 %nonassoc '[' ']'
 
 
 %%
+
+Expr            :: { Expr String }
+Expr            : var                           { Var $1 }
+                | num                           { Lit $1 }
+                | true                          { LitBool True }
+                | false                         { LitBool False }
+                | '(' Expr ')'                  { $2 }
+                | Expr '+' Expr                 { Call (Var "_builtin_add") [$1, $3] }
+                | Expr '-' Expr                 { Call (Var "_builtin_sub") [$1, $3] }
+                | Expr '*' Expr                 { Call (Var "_builtin_mul") [$1, $3] }
+                | Expr '||' Expr                { Call (Var "_builtin_or") [$1, $3] }
+                | Expr '&&' Expr                { Call (Var "_builtin_and") [$1, $3] }
+                | Expr '^' Expr                 { Call (Var "_builtin_xor") [$1, $3] }
+                | Expr '<' Expr                 { Call (Var "_builtin_less") [$1, $3] }
+                | Expr '<=' Expr                { Call (Var "_builtin_lesseq") [$1, $3] }
+                | Expr '>' Expr                 { Call (Var "_builtin_greater") [$1, $3] }
+                | Expr '>=' Expr                { Call (Var "_builtin_greatereq") [$1, $3] }
+                | Expr '==' Expr                { Eq $1 $3 }
+                | Expr '!=' Expr                { Call (Var "_builtin_not") [Eq $1 $3] }
+                | var '(' FuncCallList ')'      { Call (Var $1) $3 }
+                | Expr '[' Expr ']'             { Array $1 $3 }
+                | Expr '=' Expr                 { Assign $1 $3 }
+                | '{' Stmts '}'                 { $2 }
+
+Stmt            :: { Expr String }
+                : Expr ';'                      { $1 }
+                | if '(' Expr ')' '{' Stmts '}' else '{' Stmts '}' { If $3 $6 $10 }
+                | while '(' Expr ')' '{' Stmts '}' { While $3 $6 }
+                | return Expr ';'               { Return $2 }
+
+Stmts           :: { Expr String }
+Stmts           : {- empty -}                   { Empty }
+                | Stmt Stmts                    { Seq $1 $2 }
+                | Type var ';' Stmts            { declVar $1 $2 $4 }
+
+FuncCallList    :: { [Expr String] }
+FuncCallList    : {- empty -}                   { [] }
+                | Expr                          { [$1] }
+                | Expr ',' FuncCallList         { $1:$3 }
+
+Type            :: { Type }
+Type            : tyvar                         { toPrimitiveType $1 }
+                | Type '*'                      { TArray $1 }
+
+{-
 
 Prog            :: { Program () }
 Prog            : TopLevelDefs                  { Program $1 }
@@ -73,61 +121,20 @@ TopLevel        : Type var ';'                  { VarDecl $1 $2 }
                 | Type var '(' FuncArgs ')' ';' { ForwardDecl $2 $1 (map fst $4) }
                 | Type var '(' FuncArgs ')' '{' Stmts '}' { FuncDef $2 $1 $4 (SBlock $7) }
 
-Expr            :: { Expression () }
-Expr            : var                           { EVar $1 }
-                | num                           { ELitInt $1 }
-                | true                          { ELitBool True }
-                | false                         { ELitBool False }
-                | '(' Expr ')'                  { $2 }
-                | Expr '+' Expr                 { EArith AddOp (notag $1) (notag $3) }
-                | Expr '-' Expr                 { EArith SubOp (notag $1) (notag $3) }
-                | Expr '*' Expr                 { EArith MulOp (notag $1) (notag $3) }
-                | Expr '||' Expr                { EBool OrOp (notag $1) (notag $3) }
-                | Expr '&&' Expr                { EBool AndOp (notag $1) (notag $3) }
-                | Expr '^' Expr                 { EBool XorOp (notag $1) (notag $3) }
-                | Expr '<' Expr                 { EArithCmp LessOp (notag $1) (notag $3) }
-                | Expr '<=' Expr                { EArithCmp LessEqOp (notag $1) (notag $3) }
-                | Expr '>' Expr                 { EArithCmp GreaterOp (notag $1) (notag $3) }
-                | Expr '>=' Expr                { EArithCmp GreaterEqOp (notag $1) (notag $3) }
-                | Expr '==' Expr                { EEqual EqOp (notag $1) (notag $3) }
-                | Expr '!=' Expr                { EEqual NeqOp (notag $1) (notag $3) }
-                | var '(' FuncCallList ')'      { ECall $1 (map notag $3) }
-                | '&' Expr                      { EAddr (notag $2) }
-                | '*' Expr %prec DEREF          { EDeref (notag $2) }
-                | Expr '[' Expr ']'             { EArray (notag $1) (notag $3) }
-                | Expr '=' Expr                 { EAssign (notag $1) (notag $3) }
-                | '(' Type ')' Expr %prec CAST  { ECast $2 (notag $4) }
 
-FuncCallList    :: { [Expression ()] }
-FuncCallList    : {- empty -}                   { [] }
-                | Expr                          { [$1] }
-                | Expr ',' FuncCallList         { $1:$3 }
 
-Stmt            :: { Statement () }
-Stmt            : '{' Stmts '}'                 { SBlock $2 }
-                | Type var ';'                  { SVarDecl $1 $2 }
-                | Expr ';'                      { SRawExpr (notag $1) }
-                | if '(' Expr ')' Stmt else Stmt  { SIfThenElse (notag $3) $5 $7 }
-                | while '(' Expr ')' Stmt       { SWhile (notag $3) $5 }
-                | return Expr ';'               { SReturn (notag $2) }
-
-Stmts           :: { [Statement ()] }
-Stmts           : {- empty -}                   { [] }
-                | Stmt Stmts                    { $1:$2 }
 
 FuncArgs        :: { [(Type, Id)] }
 FuncArgs        : {- empty -}                   { [] }
                 | Type var                      { [($1, $2)] }
                 | Type var ',' FuncArgs         { ($1, $2):$4 }
 
-Type            :: { Type }
-Type            : tyvar                         { toPrimitiveType $1 }
-                | Type '*'                      { TPointer $1 }
+ -}
 
 {
 parseError :: Token -> Alex a
 parseError t = alexError $ "Parse error on token " ++ show t
 
-parse :: String -> Either String (Program ())
+parse :: String -> Either String (Expr String)
 parse s = runAlex s parseAlex
 }
