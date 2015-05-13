@@ -14,8 +14,13 @@ import FCC.Type
 
 import qualified Data.Map as M
 
-data Function a =
-  Function { argsTypes :: [Type], retType :: Type, body :: Scope Int Expr a }
+data FunctionBody a
+  = Inner (Scope Int Expr a)
+  | Native [String]
+  deriving (Eq, Ord, Show)
+
+data Function a
+  = Function { argsTypes :: [Type], retType :: Type, body :: FunctionBody a }
   deriving (Eq, Ord, Show)
 
 data Program a =
@@ -24,7 +29,7 @@ data Program a =
 
 function :: Eq a => [(a, Type)] -> Type -> Expr a -> Function a
 function args ret body = Function (map snd args) ret $
-                         abstract (`elemIndex` (map fst args)) body
+                         Inner $ abstract (`elemIndex` (map fst args)) body
 
 data TopLevel a
   = DeclVar Type a

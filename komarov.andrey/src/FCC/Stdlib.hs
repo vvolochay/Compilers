@@ -7,7 +7,7 @@ import FCC.Expr
 import FCC.Program
 
 native :: [Type] -> Type -> [String] -> Function String
-native args ret body = function (map (\x -> ("_", x)) args) ret (Native body)
+native args ret body = Function args ret $ Native body
 
 builtins :: [(String, Function String)]
 builtins = [
