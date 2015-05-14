@@ -1,6 +1,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
 module FCC.Typecheck (
 
   ) where
@@ -9,19 +10,17 @@ import FCC.Type
 import FCC.TypecheckError
 import FCC.Expr
 
+import Bound
+
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
 
 import qualified Data.Map as M
 
-data Context a = Context {
-  bindings :: M.Map a Type,
+data Context = Context {
   expectedRetType :: Type
   }
-
-lookupType :: Ord a => a -> Context a -> Maybe Type
-lookupType v ctx = M.lookup v (bindings ctx)
 
 fresh :: Typecheck String
 fresh = do
@@ -30,27 +29,22 @@ fresh = do
   return $ "var_" ++ show cnt
 
 newtype Typecheck a = Typecheck {
-  runTypecheck :: StateT Int (ReaderT (Context String) (Except TypecheckError)) a
+  runTypecheck :: StateT Int (ReaderT Context (Except TypecheckError)) a
   } deriving (Functor, Applicative, Monad,
-              MonadError TypecheckError, MonadReader (Context String), MonadState Int)
+              MonadError TypecheckError, MonadReader Context, MonadState Int)
 
-class Typecheckable (f :: * -> *) where
-  typecheck :: f String -> Typecheck (f String, Type)
+class Typecheckable (f :: * -> *) t | f -> t where
+  typecheck :: f t -> Typecheck (f t, Type)
 
-instance Typecheckable Expr where
-  typecheck (Var v) = do
-    ctx <- asks $ lookupType v
-    case ctx of
-     Nothing -> throwError $ UnboundVariable v
-     Just t -> return (Var v, t)
+instance Typecheckable Expr (String, Type) where
+  typecheck v@(Var (_, t)) = do
+    return (v, t)
   typecheck (Lit i) = return (Lit i, TInt)
   typecheck (LitBool b) = return (LitBool b, TBool)
   typecheck (Lam t s) = do
     var <- fresh
-    _ -- как пробросить тип var вглубь? Не делать же большой мап в
-    -- контексте Может, закодировать тип в имени переменной?
-    -- `Expr (Type, String)`. Будет даже проще. Для кодогенератора
-      -- можно даже кодировать локальная ли переменная и как получать доступ
+    (e, te) <- typecheck $ instantiate1 (Var (var, t)) s
+    return (Lam t (abstract1 (var, t) e), te)
   typecheck Empty = return (Empty, TVoid)
   typecheck (Seq e1 e2) = do
     (e1', _) <- typecheck e1
@@ -70,11 +64,11 @@ instance Typecheckable Expr where
     (e1', te1) <- typecheck e1
     (e2', te2) <- typecheck e2
     when (te1 /= te2) $ throwError $ EqTypesDiffer te1 te2 e1 e2
-    let select fname = return (Call (Var fname) [e1', e2'], TBool)
+    let select fname t = return (Call (Var (fname, TFun [t, t] TBool)) [e1', e2'], TBool)
     case te1 of
-     TInt -> select "_builtin_eq_int"
-     TBool -> select "_builtin_eq_bool"
-     TArray _ -> select "_builtin_eq_ptr"
+     TInt -> select "_builtin_eq_int" TInt
+     TBool -> select "_builtin_eq_bool" TBool
+     TArray a -> select "_builtin_eq_ptr" (TArray a)
      t -> throwError $ UnsupportedTypeForEq te1 e1 e2
   typecheck (While cond body) = do
     (cond', tcond) <- typecheck cond
