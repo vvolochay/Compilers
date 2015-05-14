@@ -23,15 +23,19 @@ data Context a = Context {
 lookupType :: Ord a => a -> Context a -> Maybe Type
 lookupType v ctx = M.lookup v (bindings ctx)
 
+fresh :: Typecheck String
+fresh = do
+  cnt <- get
+  modify (+1)
+  return $ "var_" ++ show cnt
+
 newtype Typecheck a = Typecheck {
   runTypecheck :: StateT Int (ReaderT (Context String) (Except TypecheckError)) a
   } deriving (Functor, Applicative, Monad,
               MonadError TypecheckError, MonadReader (Context String), MonadState Int)
 
--- TODO Сделать слева более предсказуемый тип, для которого можно
--- генерить свежие имена (да хоть тупо String)
 class Typecheckable (f :: * -> *) where
-  typecheck :: f a -> Typecheck (f a, Type)
+  typecheck :: f String -> Typecheck (f String, Type)
 
 instance Typecheckable Expr where
   typecheck (Var v) = do
@@ -41,7 +45,12 @@ instance Typecheckable Expr where
      Just t -> return (Var v, t)
   typecheck (Lit i) = return (Lit i, TInt)
   typecheck (LitBool b) = return (LitBool b, TBool)
-  typecheck (Lam t s) = _
+  typecheck (Lam t s) = do
+    var <- fresh
+    _ -- как пробросить тип var вглубь? Не делать же большой мап в
+    -- контексте Может, закодировать тип в имени переменной?
+    -- `Expr (Type, String)`. Будет даже проще. Для кодогенератора
+      -- можно даже кодировать локальная ли переменная и как получать доступ
   typecheck Empty = return (Empty, TVoid)
   typecheck (Seq e1 e2) = do
     (e1', _) <- typecheck e1
