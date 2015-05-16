@@ -9,6 +9,7 @@ module FCC.Typecheck (
 import FCC.Type
 import FCC.TypecheckError
 import FCC.Expr
+import FCC.Program
 
 import Bound
 
@@ -35,6 +36,9 @@ newtype Typecheck a = Typecheck {
 
 class Typecheckable (f :: * -> *) t | f -> t where
   typecheck :: f t -> Typecheck (f t, Type)
+
+instance Typecheckable Program String where
+  typecheck _ = _
 
 instance Typecheckable Expr (String, Type) where
   typecheck v@(Var (_, t)) = do
