@@ -13,11 +13,14 @@ import FCC.Program
 
 import Bound
 
+import Data.Foldable
+import Data.List (elemIndex)
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
 
 import qualified Data.Map as M
+import qualified Data.Set as S
 
 data Context = Context {
   expectedRetType :: Type
@@ -27,7 +30,7 @@ fresh :: Typecheck String
 fresh = do
   cnt <- get
   modify (+1)
-  return $ "var_" ++ show cnt
+  return $ "_var_" ++ show cnt
 
 newtype Typecheck a = Typecheck {
   runTypecheck :: StateT Int (ReaderT Context (Except TypecheckError)) a
@@ -38,7 +41,32 @@ class Typecheckable (f :: * -> *) t | f -> t where
   typecheck :: f t -> Typecheck (f t, Type)
 
 instance Typecheckable Program String where
-  typecheck _ = _
+  typecheck (Program funs vars) = do
+    when (not (S.null unboundVars)) $ throwError $ UnboundVariables (S.toList unboundVars)
+    funs' <- traverse ff funs
+    return $ (Program funs' vars, TVoid)
+    where
+    allFreeVars = S.fromList $ concatMap freeVars $ M.elems funs
+    allBoundVars = S.fromList $ M.keys funs ++ M.keys vars
+    unboundVars = allFreeVars S.\\ allBoundVars
+  
+    freeVars :: Function String -> [String]
+    freeVars f = case body f of
+      Inner s -> toList s
+      Native _ -> []
+
+    ff :: Function String -> Typecheck (Function String)
+    ff f@Function {body = Native{}} = return f
+    ff (Function argTypes ret (Inner s)) = do
+      argNames <- sequence [fresh | _ <- argTypes]
+      let e = instantiate ((map Var argNames) !!) s
+          args = M.fromList $ zip argNames argTypes
+          funs' = fmap (\(Function a r _) -> TFun a r) funs
+          allTypes = args `M.union` funs' `M.union` vars
+      (e', _) <- local (const $ Context ret) $
+                  typecheck $ fmap (\n -> (n, allTypes M.! n)) e
+      let s' = abstract (`elemIndex` argNames) $ fmap fst e'
+      return $ Function argTypes ret (Inner s')
 
 instance Typecheckable Expr (String, Type) where
   typecheck v@(Var (_, t)) = do
@@ -63,7 +91,7 @@ instance Typecheckable Expr (String, Type) where
       t -> throwError $ NotAFunction t f
     when (targs /= tfargs) $ throwError $ ArgumentsTypesDiffer targs tfargs f
     return (f', tfret)
-  typecheck (Call f args) = throwError $ NotCallable f
+  typecheck (Call f _) = throwError $ NotCallable f
   typecheck (Eq e1 e2) = do
     (e1', te1) <- typecheck e1
     (e2', te2) <- typecheck e2
@@ -73,16 +101,16 @@ instance Typecheckable Expr (String, Type) where
      TInt -> select "_builtin_eq_int" TInt
      TBool -> select "_builtin_eq_bool" TBool
      TArray a -> select "_builtin_eq_ptr" (TArray a)
-     t -> throwError $ UnsupportedTypeForEq te1 e1 e2
+     _ -> throwError $ UnsupportedTypeForEq te1 e1 e2
   typecheck (While cond body) = do
     (cond', tcond) <- typecheck cond
-    (body', tbody) <- typecheck body
+    (body', _) <- typecheck body
     when (tcond /= TBool) $ throwError $ WhileConditionIsNotBool tcond cond
     return (While cond' body', TVoid)
   typecheck (If cond thn els) = do
     (cond', tcond) <- typecheck cond
-    (thn', tthn) <- typecheck thn
-    (els', tels) <- typecheck els
+    (thn', _) <- typecheck thn
+    (els', _) <- typecheck els
     when (tcond /= TBool) $ throwError $ IfConditionIsNotBool tcond cond
     return (If cond' thn' els', TVoid)
   typecheck (Assign v@(Var _) val) = do
@@ -95,13 +123,13 @@ instance Typecheckable Expr (String, Type) where
     (val', tval) <- typecheck val
     when (tai /= tval) $ throwError $ AssignTypeMismatch tai tval ai val
     return (Assign ai' val', TVoid)
-  typecheck (Assign dst val) = throwError $ NotAssignable dst
+  typecheck (Assign dst _) = throwError $ NotAssignable dst
   typecheck (Array a i) = do
     (a', ta) <- typecheck a
     (i', ti) <- typecheck i
     ta' <- case ta of
       TArray x -> return x
-      t -> throwError $ NotAnArray ta a
+      _ -> throwError $ NotAnArray ta a
     when (ti /= TInt) $ throwError $ IndexIsNotInt ti i
     return $ (Array a' i', ta')
   typecheck (Return e) = do

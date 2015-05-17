@@ -2,6 +2,7 @@ module FCC.Program (
   Function(..),
   Program(..),
   TopLevel(..),
+  FunctionBody(..),
   function,
   program,
   ) where
