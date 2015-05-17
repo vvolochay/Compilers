@@ -20,6 +20,7 @@ data Expr a
   | LitBool Bool
   | Lam Type (Scope () Expr a)
   | Empty
+  | Pop (Expr a)
   | Seq (Expr a) (Expr a)
   | Call (Expr a) [Expr a]
   | Eq (Expr a) (Expr a) -- костыль во имя нереализации ad-hoc полиморфизма
@@ -44,6 +45,7 @@ instance Monad Expr where
   LitBool b >>= _ = LitBool b
   Lam t scope >>= f = Lam t $ scope >>>= f
   Empty >>= f = Empty
+  Pop e >>= f = Pop $ e >>= f
   Seq e1 e2 >>= f = Seq (e1 >>= f) (e2 >>= f)
   Call fun args >>= f = Call (fun >>= f) $ fmap (>>= f) args
   Eq e1 e2 >>= f = Eq (e1 >>= f) (e2 >>= f)

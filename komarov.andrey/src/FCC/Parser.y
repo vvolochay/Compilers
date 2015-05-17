@@ -91,7 +91,7 @@ Expr            : var                           { Var $1 }
                 | '{' Stmts '}'                 { $2 }
 
 Stmt            :: { Expr String }
-                : Expr ';'                      { $1 }
+                : Expr ';'                      { Pop $1 }
                 | if '(' Expr ')' '{' Stmts '}' else '{' Stmts '}' { If $3 $6 $10 }
                 | while '(' Expr ')' '{' Stmts '}' { While $3 $6 }
                 | return Expr ';'               { Return $2 }

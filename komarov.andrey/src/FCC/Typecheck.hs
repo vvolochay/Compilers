@@ -83,6 +83,9 @@ instance Typecheckable Expr (String, Type) where
     (e, te) <- typecheck $ instantiate1 (Var (var, t)) s
     return (Lam t (abstract1 (var, t) e), te)
   typecheck Empty = return (Empty, TVoid)
+  typecheck (Pop e) = do
+    (e', te) <- typecheck e
+    return (Pop e', te)
   typecheck (Seq e1 e2) = do
     (e1', _) <- typecheck e1
     (e2', _) <- typecheck e2
