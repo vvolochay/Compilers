@@ -41,6 +41,7 @@ instance Monad Expr where
   return = Var
   Var a >>= f = f a
   Lit i >>= _ = Lit i
+  LitBool b >>= _ = LitBool b
   Lam t scope >>= f = Lam t $ scope >>>= f
   Empty >>= f = Empty
   Seq e1 e2 >>= f = Seq (e1 >>= f) (e2 >>= f)

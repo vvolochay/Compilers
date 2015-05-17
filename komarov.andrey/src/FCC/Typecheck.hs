@@ -3,13 +3,14 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 module FCC.Typecheck (
-
+  runTC,
   ) where
 
 import FCC.Type
 import FCC.TypecheckError
 import FCC.Expr
 import FCC.Program
+import FCC.Stdlib
 
 import Bound
 
@@ -37,6 +38,9 @@ newtype Typecheck a = Typecheck {
   } deriving (Functor, Applicative, Monad,
               MonadError TypecheckError, MonadReader Context, MonadState Int)
 
+runTC :: Program String -> Either TypecheckError (Program String)
+runTC prog = fmap (fst . fst) $ runExcept $ runReaderT (runStateT (runTypecheck $ typecheck prog) 0) (Context TVoid)
+
 class Typecheckable (f :: * -> *) t | f -> t where
   typecheck :: f t -> Typecheck (f t, Type)
 
@@ -47,7 +51,7 @@ instance Typecheckable Program String where
     return $ (Program funs' vars, TVoid)
     where
     allFreeVars = S.fromList $ concatMap freeVars $ M.elems funs
-    allBoundVars = S.fromList $ M.keys funs ++ M.keys vars
+    allBoundVars = S.fromList $ M.keys funs ++ M.keys vars ++ map fst builtins
     unboundVars = allFreeVars S.\\ allBoundVars
   
     freeVars :: Function String -> [String]
@@ -61,7 +65,8 @@ instance Typecheckable Program String where
       argNames <- sequence [fresh | _ <- argTypes]
       let e = instantiate ((map Var argNames) !!) s
           args = M.fromList $ zip argNames argTypes
-          funs' = fmap (\(Function a r _) -> TFun a r) funs
+          builtins' = M.fromList builtins
+          funs' = fmap (\(Function a r _) -> TFun a r) $ funs `M.union` builtins'
           allTypes = args `M.union` funs' `M.union` vars
       (e', _) <- local (const $ Context ret) $
                   typecheck $ fmap (\n -> (n, allTypes M.! n)) e
