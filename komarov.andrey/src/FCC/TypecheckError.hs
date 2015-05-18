@@ -22,5 +22,6 @@ data TypecheckError where
   ArgumentsTypesDiffer :: Show a => [Type] -> [Type] -> Expr a -> TypecheckError
   AssignTypeMismatch :: Show a => Type -> Type -> Expr a -> Expr a -> TypecheckError
   WrongReturnType :: Show a => Type -> Type -> Expr a -> TypecheckError
+  UnboundVariables :: Show a => [a] -> TypecheckError
 
 deriving instance Show TypecheckError
