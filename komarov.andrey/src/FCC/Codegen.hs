@@ -1,14 +1,16 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
 module FCC.Codegen (
-
+  codegen,
   ) where
 
 import FCC.Expr
 import FCC.Program
+import FCC.Stdlib
 
 import Bound
 
+import Data.Monoid
 import Control.Monad.State
 
 import qualified Data.Map as M
@@ -62,13 +64,13 @@ compileP (Program funs vars) = do
       dataBody = [name ++ ": .word 0" | name <- dataSegNames]
       textVeryHead = ["", "@@@@@@@@@", ".text"]
       textHead = [realName ++ ": .word " ++ dataName | (realName, dataName) <- zip (M.keys vars) dataSegNames]
-  functions <- mapM f $ M.toList funs
+  functions <- mapM f $ M.toList (funs <> M.fromList builtins)
   return $ dataHead ++ dataBody ++ textVeryHead ++ textHead ++ concat functions
     where
     f :: (String, Function String) -> Codegen [String]
     f (name, fun) = do
       code <- compileF fun
-      return $ [name ++ ":"] ++ code
+      return $ ["", "@@@@@@@", name ++ ":"] ++ code
 
 compileF :: Function String -> Codegen [String]
 compileF (Function _ _ (Native code)) = return $ code ++ ["mov pc, lr"]
@@ -81,7 +83,7 @@ compileF (Function _ _ (Inner s)) = do
 
 compileE :: Expr Binding -> Codegen [String]
 compileE (Var (Local off)) = return ["ldr r0, [fp, #-" ++ show (off * 4) ++"]", "push r0"]
-compileE (Var (Global name)) = return ["ldr r0, " ++ show name, "push r0"]
+compileE (Var (Global name)) = return ["ldr r0, " ++ name, "push r0"]
 compileE (Var (Arg arg)) = return ["ldr r0, [fp, #" ++ show (arg * 4 + 8) ++ "]", "push r0"]
 compileE (Lit i) = return ["push =" ++ show i]
 compileE (LitBool True) = return ["push #1\t\t@ true"]

@@ -6,12 +6,18 @@ import FCC.Type
 import FCC.Expr
 import FCC.Program
 
+import Bound
+
 native :: [Type] -> Type -> [String] -> Function String
 native args ret body = Function args ret $ Native body
 
+start :: Function String
+start = Function [] TInt $ Inner $ abstract (const Nothing) $ Call (Var "main") []
+
 builtins :: [(String, Function String)]
 builtins = [
-  ("_builtin_add", native [TInt, TInt] TInt ["pop r0", "pop r1", "add r0, r0, r1", "push r0"])
+  ("_builtin_add", native [TInt, TInt] TInt ["pop r0", "pop r1", "add r0, r0, r1", "push r0"]),
+  ("_start", start)
  ]
 
            {-

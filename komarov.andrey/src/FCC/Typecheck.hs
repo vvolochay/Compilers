@@ -50,7 +50,7 @@ instance Typecheckable Program String where
     funs' <- traverse ff funs
     return $ (Program funs' vars, TVoid)
     where
-    allFreeVars = S.fromList $ concatMap freeVars $ M.elems funs
+    allFreeVars = S.fromList $ concatMap freeVars $ M.elems funs ++ map snd builtins
     allBoundVars = S.fromList $ M.keys funs ++ M.keys vars ++ map fst builtins
     unboundVars = allFreeVars S.\\ allBoundVars
   
