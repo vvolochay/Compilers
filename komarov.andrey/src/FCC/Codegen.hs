@@ -11,16 +11,30 @@ import Bound
 
 import Control.Monad.State
 
+import qualified Data.Map as M
+
 impossible = error "Internal compiler error. Please submit a bug-report."
 
 data Binding = Local Int | Global String | Arg Int
                            deriving (Eq, Ord, Show, Read)
 
-data CodegenState = CodegenState { offset :: Int, counter :: Int, maxOffset :: Int }
+data CodegenState = CodegenState {
+  offset :: Int,
+  counter :: Int,
+  maxOffset :: Int,
+  argumentsCount :: Int }
+
+emptyState = CodegenState 0 0 0 0
 
 modifyOffset :: MonadState CodegenState m => (Int -> Int) -> m ()
 modifyOffset f = modify $ \s@(CodegenState{maxOffset = m, offset = o})
                           -> s{maxOffset = m `max` o, offset = f o}
+
+resetMaxOffset :: MonadState CodegenState m => m ()
+resetMaxOffset = modify $ \s -> s{maxOffset = 0}
+
+setArgumentsCount :: MonadState CodegenState m => Int -> m ()
+setArgumentsCount args = modify $ \s -> s{argumentsCount = args}
 
 newtype Codegen a = Codegen {
   runCodegen :: State CodegenState a
@@ -38,8 +52,32 @@ freshLabel = fresh "_label_"
 freshVar :: Codegen String
 freshVar = fresh "_var_"
 
-codegen :: Program a -> [String] 
-codegen = _
+codegen :: Program String -> [String] 
+codegen p = evalState (runCodegen $ compileP p) emptyState
+
+compileP :: Program String -> Codegen [String]
+compileP (Program funs vars) = do
+  dataSegNames <- sequence [freshVar | _ <- M.keys vars]
+  let dataHead = ["@@@@@@@@@", ".data"]
+      dataBody = [name ++ ": .word 0" | name <- dataSegNames]
+      textVeryHead = ["", "@@@@@@@@@", ".text"]
+      textHead = [realName ++ ": .word " ++ dataName | (realName, dataName) <- zip (M.keys vars) dataSegNames]
+  functions <- mapM f $ M.toList funs
+  return $ dataHead ++ dataBody ++ textVeryHead ++ textHead ++ concat functions
+    where
+    f :: (String, Function String) -> Codegen [String]
+    f (name, fun) = do
+      code <- compileF fun
+      return $ [name ++ ":"] ++ code
+
+compileF :: Function String -> Codegen [String]
+compileF (Function _ _ (Native code)) = return $ code ++ ["mov pc, lr"]
+compileF (Function _ _ (Inner s)) = do
+  let e = instantiate (return . Arg) (Global <$> s)
+  resetMaxOffset
+  code <- compileE e
+  off <- gets maxOffset
+  return $ ["push {fp, lr}", "mov fp, sp", "sub sp, #" ++ show (off * 4)] ++ code
 
 compileE :: Expr Binding -> Codegen [String]
 compileE (Var (Local off)) = return ["ldr r0, [fp, #-" ++ show (off * 4) ++"]", "push r0"]
@@ -53,7 +91,7 @@ compileE (Lam t s) = do
   off <- gets offset
   modifyOffset (+1)
   code <- compileE $ instantiate1 (Var (Local off)) s
-  modifyOffset (-1)
+  modifyOffset (`subtract` 1)
   return code
 compileE Empty = return []
 compileE (Pop e) = do
@@ -101,4 +139,5 @@ compileE (Array a i) = do
   return $ codea ++ codei ++ ["pop r1", "pop r0", "ldr r0, [r0, r1, LSL #2]", "push r0"]
 compileE (Return e) = do
   code <- compileE e
-  return $ code ++ ["pop r0", "mov sp, fp", "pop {fp, lr}", "mov pc, lr"]
+  nargs <- gets argumentsCount
+  return $ code ++ ["pop r0", "mov sp, fp", "pop {fp, lr}", "add sp, #" ++ show (nargs * 4), "push r0", "mov pc, lr"]
