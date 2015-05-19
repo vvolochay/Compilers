@@ -6,7 +6,6 @@ module FCC.Codegen (
 
 import FCC.Expr
 import FCC.Program
-import FCC.Stdlib
 
 import Bound
 
@@ -64,7 +63,7 @@ compileP (Program funs vars) = do
       dataBody = [name ++ ": .word 0" | name <- dataSegNames]
       textVeryHead = ["", "@@@@@@@@@", ".text"]
       textHead = [realName ++ ": .word " ++ dataName | (realName, dataName) <- zip (M.keys vars) dataSegNames]
-  functions <- mapM f $ M.toList (funs <> M.fromList builtins)
+  functions <- mapM f $ M.toList funs
   return $ dataHead ++ dataBody ++ textVeryHead ++ textHead ++ concat functions
     where
     f :: (String, Function String) -> Codegen [String]

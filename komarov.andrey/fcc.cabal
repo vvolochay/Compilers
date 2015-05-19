@@ -16,7 +16,8 @@ cabal-version:       >=1.20
 executable fcc
   main-is:           Main.hs
   other-modules:     FCC.Parser, FCC.Lexer, FCC.Expr, FCC.Program,
-                     FCC.Type, FCC.Stdlib, FCC.TypecheckError, FCC.Typecheck
+                     FCC.Type, FCC.Stdlib, FCC.TypecheckError, FCC.Typecheck,
+                     FCC.Optimize
   build-depends:     base >=4.8 && <5, array, containers, mtl, bound, prelude-extras
   build-tools:       happy, alex
   hs-source-dirs:    src

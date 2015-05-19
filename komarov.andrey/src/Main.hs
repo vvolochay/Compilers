@@ -4,6 +4,7 @@ import FCC.Parser
 import FCC.Typecheck
 import FCC.Codegen
 import FCC.Stdlib
+import FCC.Optimize
 
 import Data.List (intercalate)
 
@@ -15,4 +16,4 @@ main = do
    Left e -> putStrLn $ "failed to parse: " ++ show e
    Right x -> case runTC (withStdlib x) of
      Left e' -> putStrLn $ "failed to typecheck: " ++ show e'
-     Right p -> (putStrLn $ "@ " ++ show p) >> (putStrLn $ intercalate "\n" $ codegen p)
+     Right p -> let p' = optimize p in (putStrLn $ "@ " ++ show p') >> (putStrLn $ intercalate "\n" $ codegen p')
