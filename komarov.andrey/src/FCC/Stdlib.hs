@@ -26,6 +26,7 @@ exit = native [TInt] TVoid ["pop {r0}", "mov r7, #1", "swi 0"]
 builtins :: [(String, Function String)]
 builtins = [
   ("_builtin_add", native [TInt, TInt] TInt ["pop {r0}", "pop {r1}", "add r0, r0, r1", "push {r0}"]),
+  ("_builtin_less", native [TInt, TInt] TBool ["pop {r1, r2}", "cmp r1, r2", "movlt r0, #1", "movge r0, #0", "push {r0}"]),
   ("_start", start),
   ("_exit", exit)
  ]

@@ -86,8 +86,8 @@ compileE (Var (Local off)) = return ["ldr r0, [fp, #-" ++ show (off * 4) ++"]", 
 compileE (Var (Global name)) = return ["ldr r0, " ++ name, "push {r0}"]
 compileE (Var (Arg arg)) = return ["ldr r0, [fp, #" ++ show (arg * 4 + 8) ++ "]", "push {r0}"]
 compileE (Lit i) = return ["ldr r0, =" ++ show i, "push {r0}"]
-compileE (LitBool True) = return ["push #1\t\t@ true"]
-compileE (LitBool False) = return ["push #0\t\t@ false"]
+compileE (LitBool True) = return ["mov r0, #1", "push {r0}\t\t@ true"]
+compileE (LitBool False) = return ["mov r0, #0", "push {r0}\t\t@ false"]
 compileE (Lam t s) = do
   v <- freshVar
   off <- gets offset
@@ -110,14 +110,14 @@ compileE (While cond body) = do
   end <- freshLabel
   cond' <- compileE cond
   body' <- compileE body
-  return $ [begin ++ ": @ while"] ++ cond' ++ ["pop {r0}", "tst r0, r0", "bz " ++ end] ++ body' ++ [end ++ ": @ endwhile"]
+  return $ [begin ++ ": @ while"] ++ cond' ++ ["pop {r0}", "tst r0, r0", "beq " ++ end] ++ body' ++ [end ++ ": @ endwhile"]
 compileE (If cond thn els) = do
   elseLabel <- freshLabel
   endIfLabel <- freshLabel
   cond' <- compileE cond
   thn' <- compileE thn
   els' <- compileE els
-  return $ cond' ++ ["pop {r0}", "tst r0, r0", "bz " ++ elseLabel]
+  return $ cond' ++ ["pop {r0}", "tst r0, r0", "beq " ++ elseLabel]
     ++ thn' ++ ["b " ++ endIfLabel, elseLabel ++ ": @ else:"]
     ++ els' ++ [endIfLabel ++ ": @ endif"]
 compileE (Assign (Var (Local off)) src) = do
