@@ -44,6 +44,7 @@ tokens :-
        "return"                 { r TokenReturn }
        "true"                   { r TokenTrue }
        "false"                  { r TokenFalse }
+       "new"                    { r TokenNew }
        ","                      { r TokenComma }
        "&"                      { r TokenAmp }
        "!"                      { r TokenNot }
@@ -104,6 +105,7 @@ data Token = TokenNum Int
            | TokenFalse
            | TokenComma
            | TokenAmp
+           | TokenNew
            | TokenEOF
            deriving (Eq, Show)
 

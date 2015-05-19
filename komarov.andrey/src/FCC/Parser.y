@@ -42,6 +42,7 @@ import FCC.Type
         else            { TokenElse }
         while           { TokenWhile }
         return          { TokenReturn }
+        new             { TokenNew }
         num             { TokenNum $$ }
         true            { TokenTrue }
         false           { TokenFalse }
@@ -57,7 +58,7 @@ import FCC.Type
 %nonassoc '<' '>' '<=' '>='
 %left '+' '-'
 %left '*'
-%left '!'
+%left '!' new
 %nonassoc '[' ']'
 
 
@@ -88,6 +89,7 @@ Expr            : var                           { Var $1 }
                 | var '(' FunCallList ')'       { Call (Var $1) $3 }
                 | Expr '[' Expr ']'             { Array $1 $3 }
                 | Expr '=' Expr                 { Assign $1 $3 }
+                | new Type '[' Expr ']'         { New $2 $4 }
                 | '{' Stmts '}'                 { $2 }
 
 Stmt            :: { Expr String }

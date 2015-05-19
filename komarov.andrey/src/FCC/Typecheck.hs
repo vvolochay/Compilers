@@ -138,6 +138,10 @@ instance Typecheckable Expr (String, Type) where
       _ -> throwError $ NotAnArray ta a
     when (ti /= TInt) $ throwError $ IndexIsNotInt ti i
     return $ (Array a' i', ta')
+  typecheck (New t e) = do
+    (e', te) <- typecheck e
+    when (te /= TInt) $ throwError $ NewArraySizeIsNotInt te e
+    return (Call (Var ("_new", TFun [TInt] (TArray t))) [e'], TArray t)
   typecheck (Return e) = do
     (e', te) <- typecheck e
     tret <- asks expectedRetType

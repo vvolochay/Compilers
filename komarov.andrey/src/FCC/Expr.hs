@@ -28,6 +28,7 @@ data Expr a
   | If (Expr a) (Expr a) (Expr a)
   | Assign (Expr a) (Expr a)
   | Array (Expr a) (Expr a)
+  | New Type (Expr a)
   | Return (Expr a)
   deriving (Eq, Ord, Show, Read, Foldable, Traversable)
 
@@ -53,6 +54,7 @@ instance Monad Expr where
   If cond thn els >>= f = If (cond >>= f) (thn >>= f) (els >>= f)
   Assign dest src >>= f = Assign (dest >>= f) (src >>= f)
   Array arr ind >>= f = Array (arr >>= f) (ind >>= f)
+  New t e >>= f = New t $ e >>= f
   Return e >>= f = Return $ e >>= f
 
 declVar :: Eq a => Type -> a -> Expr a -> Expr a

@@ -126,7 +126,7 @@ compileE (Assign (Var (Local off)) src) = do
   return $ code ++ ["pop {r0}", "str r0, [fp, #-" ++ show (off * 4) ++ "]", "push {r0}"]
 compileE (Assign (Var (Global name)) src) = do
   code <- compileE src
-  return $ code ++ ["pop {r0}", "ldr r1, " ++ show name, "str r0, [r1]", "push {r0}"]
+  return $ code ++ ["pop {r0}", "ldr r1, " ++ name, "str r0, [r1]", "push {r0}"]
 compileE (Assign (Var (Arg arg)) src) = do
   code <- compileE src
   return $ code ++ ["pop {r0}", "str r0, [fp, #" ++ show (arg * 4 + 8) ++ "]", "push {r0}"]

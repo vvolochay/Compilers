@@ -23,5 +23,6 @@ data TypecheckError where
   AssignTypeMismatch :: Show a => Type -> Type -> Expr a -> Expr a -> TypecheckError
   WrongReturnType :: Show a => Type -> Type -> Expr a -> TypecheckError
   UnboundVariables :: Show a => [a] -> TypecheckError
+  NewArraySizeIsNotInt :: Show a => Type -> Expr a -> TypecheckError
 
 deriving instance Show TypecheckError
