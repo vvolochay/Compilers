@@ -101,7 +101,7 @@ compileE (Pop e) = do
   return $ code ++ ["pop {r0}"]
 compileE (Seq e1 e2) = (++) <$> compileE e1 <*> compileE e2
 compileE (Call (Var (Global fname)) args) = do
-  compiledArgs <- reverse <$> concat <$> mapM compileE args
+  compiledArgs <- concat <$> reverse <$> mapM compileE args
   return $ compiledArgs ++ ["bl " ++ fname]
 compileE (Call _ _) = impossible
 compileE (Eq _ _) = impossible
