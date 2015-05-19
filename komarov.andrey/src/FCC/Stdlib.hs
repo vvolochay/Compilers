@@ -21,11 +21,11 @@ start :: Function String
 start = Function [] TInt $ Inner $ abstract (const Nothing) $ Call (Var "_exit") [Call (Var "main") []]
 
 exit :: Function String
-exit = native [TInt] TVoid ["pop r1", "mov r0, #1", "swi"]
+exit = native [TInt] TVoid ["pop {r0}", "mov r7, #1", "swi 0"]
 
 builtins :: [(String, Function String)]
 builtins = [
-  ("_builtin_add", native [TInt, TInt] TInt ["pop r0", "pop r1", "add r0, r0, r1", "push r0"]),
+  ("_builtin_add", native [TInt, TInt] TInt ["pop {r0}", "pop {r1}", "add r0, r0, r1", "push {r0}"]),
   ("_start", start),
   ("_exit", exit)
  ]

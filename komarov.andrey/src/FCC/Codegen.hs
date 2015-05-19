@@ -60,7 +60,7 @@ codegen p = evalState (runCodegen $ compileP p) emptyState
 compileP :: Program String -> Codegen [String]
 compileP (Program funs vars) = do
   dataSegNames <- sequence [freshVar | _ <- M.keys vars]
-  let dataHead = ["@@@@@@@@@", ".data"]
+  let dataHead = ["@@@@@@@@@", ".data", ".global _start"]
       dataBody = [name ++ ": .word 0" | name <- dataSegNames]
       textVeryHead = ["", "@@@@@@@@@", ".text"]
       textHead = [realName ++ ": .word " ++ dataName | (realName, dataName) <- zip (M.keys vars) dataSegNames]
@@ -82,9 +82,9 @@ compileF (Function _ _ (Inner s)) = do
   return $ ["push {fp, lr}", "mov fp, sp", "sub sp, #" ++ show (off * 4)] ++ code
 
 compileE :: Expr Binding -> Codegen [String]
-compileE (Var (Local off)) = return ["ldr r0, [fp, #-" ++ show (off * 4) ++"]", "push r0"]
-compileE (Var (Global name)) = return ["ldr r0, " ++ name, "push r0"]
-compileE (Var (Arg arg)) = return ["ldr r0, [fp, #" ++ show (arg * 4 + 8) ++ "]", "push r0"]
+compileE (Var (Local off)) = return ["ldr r0, [fp, #-" ++ show (off * 4) ++"]", "push {r0}"]
+compileE (Var (Global name)) = return ["ldr r0, " ++ name, "push {r0}"]
+compileE (Var (Arg arg)) = return ["ldr r0, [fp, #" ++ show (arg * 4 + 8) ++ "]", "push {r0}"]
 compileE (Lit i) = return ["push =" ++ show i]
 compileE (LitBool True) = return ["push #1\t\t@ true"]
 compileE (LitBool False) = return ["push #0\t\t@ false"]
@@ -98,7 +98,7 @@ compileE (Lam t s) = do
 compileE Empty = return []
 compileE (Pop e) = do
   code <- compileE e
-  return $ code ++ ["pop r0"]
+  return $ code ++ ["pop {r0}"]
 compileE (Seq e1 e2) = (++) <$> compileE e1 <*> compileE e2
 compileE (Call (Var (Global fname)) args) = do
   compiledArgs <- reverse <$> concat <$> mapM compileE args
@@ -110,36 +110,36 @@ compileE (While cond body) = do
   end <- freshLabel
   cond' <- compileE cond
   body' <- compileE body
-  return $ [begin ++ ": @ while"] ++ cond' ++ ["pop r0", "tst r0, r0", "bz " ++ end] ++ body' ++ [end ++ ": @ endwhile"]
+  return $ [begin ++ ": @ while"] ++ cond' ++ ["pop {r0}", "tst r0, r0", "bz " ++ end] ++ body' ++ [end ++ ": @ endwhile"]
 compileE (If cond thn els) = do
   elseLabel <- freshLabel
   endIfLabel <- freshLabel
   cond' <- compileE cond
   thn' <- compileE thn
   els' <- compileE els
-  return $ cond' ++ ["pop r0", "tst r0, r0", "bz " ++ elseLabel]
+  return $ cond' ++ ["pop {r0}", "tst r0, r0", "bz " ++ elseLabel]
     ++ thn' ++ ["b " ++ endIfLabel, elseLabel ++ ": @ else:"]
     ++ els' ++ [endIfLabel ++ ": @ endif"]
 compileE (Assign (Var (Local off)) src) = do
   code <- compileE src
-  return $ code ++ ["pop r0", "str r0, [fp, #-" ++ show (off * 4) ++ "]", "push r0"]
+  return $ code ++ ["pop {r0}", "str r0, [fp, #-" ++ show (off * 4) ++ "]", "push {r0}"]
 compileE (Assign (Var (Global name)) src) = do
   code <- compileE src
-  return $ code ++ ["pop r0", "ldr r1, " ++ show name, "str r0, [r1]", "push r0"]
+  return $ code ++ ["pop {r0}", "ldr r1, " ++ show name, "str r0, [r1]", "push {r0}"]
 compileE (Assign (Var (Arg arg)) src) = do
   code <- compileE src
-  return $ code ++ ["pop r0", "str r0, [fp, #" ++ show (arg * 4 + 8) ++ "]", "push r0"]
+  return $ code ++ ["pop {r0}", "str r0, [fp, #" ++ show (arg * 4 + 8) ++ "]", "push {r0}"]
 compileE (Assign (Array a i) src) = do
   codea <- compileE a
   codei <- compileE i
   code <- compileE src
-  return $ codea ++ codei ++ code ++ ["pop r0\t\t@ b", "pop r1\t\t@ i", "pop r2\t\t@ a", "str r0, [r2, r1, LSL #2]", "push r0"]
+  return $ codea ++ codei ++ code ++ ["pop {r0}\t\t@ b", "pop {r1}\t\t@ i", "pop {r2}\t\t@ a", "str r0, [r2, r1, LSL #2]", "push {r0}"]
 compileE (Assign _ _) = impossible
 compileE (Array a i) = do
   codea <- compileE a
   codei <- compileE i
-  return $ codea ++ codei ++ ["pop r1", "pop r0", "ldr r0, [r0, r1, LSL #2]", "push r0"]
+  return $ codea ++ codei ++ ["pop {r1}", "pop {r0}", "ldr r0, [r0, r1, LSL #2]", "push {r0}"]
 compileE (Return e) = do
   code <- compileE e
   nargs <- gets argumentsCount
-  return $ code ++ ["pop r0", "mov sp, fp", "pop {fp, lr}", "add sp, #" ++ show (nargs * 4), "push r0", "mov pc, lr"]
+  return $ code ++ ["pop {r0}", "mov sp, fp", "pop {fp, lr}", "add sp, #" ++ show (nargs * 4), "push {r0}", "mov pc, lr"]

@@ -96,7 +96,7 @@ instance Typecheckable Expr (String, Type) where
       TFun ta t -> return (ta, t)
       t -> throwError $ NotAFunction t f
     when (targs /= tfargs) $ throwError $ ArgumentsTypesDiffer targs tfargs f
-    return (f', tfret)
+    return (Call f' (map fst args'), tfret)
   typecheck (Call f _) = throwError $ NotCallable f
   typecheck (Eq e1 e2) = do
     (e1', te1) <- typecheck e1
