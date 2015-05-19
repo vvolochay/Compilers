@@ -11,12 +11,13 @@ import FCC.Type
 
 import Control.Monad
 
+import Data.Int
 import Prelude.Extras
 import Bound
 
 data Expr a
   = Var a
-  | Lit Int
+  | Lit Int32
   | LitBool Bool
   | Lam Type (Scope () Expr a)
   | Empty

@@ -4,6 +4,7 @@ module FCC.Lexer (
        Token(..), lexer
 ) where
 
+import Data.Int
 import qualified Data.Set as S
 }
 
@@ -73,7 +74,7 @@ alexInitUserState = AlexUserState $ S.fromList ["int", "void", "bool"]
 alexEOF :: Alex Token
 alexEOF = return TokenEOF
 
-data Token = TokenNum Int
+data Token = TokenNum Int32
            | TokenVar String
            | TokenTyVar String
            | TokenLParen
