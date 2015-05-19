@@ -1,5 +1,5 @@
 name:                fcc
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            Featherweight C compiler
 -- description:         
 homepage:            https://github.com/vvolochay/Compilers
@@ -15,27 +15,9 @@ cabal-version:       >=1.20
 
 executable fcc
   main-is:           Main.hs
-  other-modules:     FCC.Parser, FCC.Lexer, FCC.AST, FCC.ARM,
-                     FCC.PrettyPrinter
-  build-depends:     base >=4.8 && <5, array, containers, mtl
+  other-modules:     FCC.Parser, FCC.Lexer, FCC.Expr, FCC.Program,
+                     FCC.Type, FCC.Stdlib, FCC.TypecheckError, FCC.Typecheck
+  build-depends:     base >=4.8 && <5, array, containers, mtl, bound, prelude-extras
   build-tools:       happy, alex
   hs-source-dirs:    src
-  default-language:  Haskell2010
-
-test-suite test-parser
-  type:              exitcode-stdio-1.0
-  main-is:           TestParser.hs
-  hs-source-dirs:    src, tests
-  other-modules:     FCC.Parser, FCC.Lexer
-  build-depends:     base >= 4.8 && < 5, directory, array, containers
-  default-language:  Haskell2010
-
-test-suite test-pretty-printer
-  type:              exitcode-stdio-1.0
-  main-is:           TestPrettyPrinter.hs
-  hs-source-dirs:    src, tests
-  other-modules:     FCC.PrettyPrinter, FCC.AST, FCC.Parser, FCC.Lexer
-  build-depends:     base >= 4.8 && < 5, test-framework-quickcheck2,
-                     test-framework-hunit, QuickCheck, test-framework, HUnit,
-                     derive, array, containers, directory
   default-language:  Haskell2010
