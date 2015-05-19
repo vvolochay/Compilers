@@ -33,7 +33,7 @@ modifyOffset f = modify $ \s@(CodegenState{maxOffset = m, offset = o})
                           -> s{maxOffset = m `max` o, offset = f o}
 
 resetMaxOffset :: MonadState CodegenState m => m ()
-resetMaxOffset = modify $ \s -> s{maxOffset = 0}
+resetMaxOffset = modify $ \s -> s{maxOffset = 1}
 
 setArgumentsCount :: MonadState CodegenState m => Int -> m ()
 setArgumentsCount args = modify $ \s -> s{argumentsCount = args}
@@ -77,6 +77,7 @@ compileF (Function _ _ (Native code)) = return $ code ++ ["mov pc, lr"]
 compileF (Function _ _ (Inner s)) = do
   let e = instantiate (return . Arg) (Global <$> s)
   resetMaxOffset
+  modifyOffset (const 1)
   code <- compileE e
   off <- gets maxOffset
   return $ ["push {fp, lr}", "mov fp, sp", "sub sp, #" ++ show (off * 4)] ++ code
@@ -110,7 +111,7 @@ compileE (While cond body) = do
   end <- freshLabel
   cond' <- compileE cond
   body' <- compileE body
-  return $ [begin ++ ": @ while"] ++ cond' ++ ["pop {r0}", "tst r0, r0", "beq " ++ end] ++ body' ++ [end ++ ": @ endwhile"]
+  return $ [begin ++ ": @ while"] ++ cond' ++ ["pop {r0}", "tst r0, r0", "beq " ++ end] ++ body' ++ ["b " ++ begin, end ++ ": @ endwhile"]
 compileE (If cond thn els) = do
   elseLabel <- freshLabel
   endIfLabel <- freshLabel
