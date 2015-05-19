@@ -3,6 +3,7 @@ module Main where
 import FCC.Parser
 import FCC.Typecheck
 import FCC.Codegen
+import FCC.Stdlib
 
 import Data.List (intercalate)
 
@@ -12,6 +13,6 @@ main = do
   let p = parse input
   case p of
    Left e -> putStrLn $ "failed to parse: " ++ show e
-   Right x -> case runTC x of
+   Right x -> case runTC (withStdlib x) of
      Left e' -> putStrLn $ "failed to typecheck: " ++ show e'
-     Right p -> print p >> (putStrLn $ intercalate "\n" $ codegen p)
+     Right p -> (putStrLn $ "@ " ++ show p) >> (putStrLn $ intercalate "\n" $ codegen p)

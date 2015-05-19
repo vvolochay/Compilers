@@ -10,7 +10,6 @@ import FCC.Type
 import FCC.TypecheckError
 import FCC.Expr
 import FCC.Program
-import FCC.Stdlib
 
 import Bound
 
@@ -50,8 +49,8 @@ instance Typecheckable Program String where
     funs' <- traverse ff funs
     return $ (Program funs' vars, TVoid)
     where
-    allFreeVars = S.fromList $ concatMap freeVars $ M.elems funs ++ map snd builtins
-    allBoundVars = S.fromList $ M.keys funs ++ M.keys vars ++ map fst builtins
+    allFreeVars = S.fromList $ concatMap freeVars $ M.elems funs
+    allBoundVars = S.fromList $ M.keys funs ++ M.keys vars
     unboundVars = allFreeVars S.\\ allBoundVars
   
     freeVars :: Function String -> [String]
@@ -65,8 +64,7 @@ instance Typecheckable Program String where
       argNames <- sequence [fresh | _ <- argTypes]
       let e = instantiate ((map Var argNames) !!) s
           args = M.fromList $ zip argNames argTypes
-          builtins' = M.fromList builtins
-          funs' = fmap (\(Function a r _) -> TFun a r) $ funs `M.union` builtins'
+          funs' = fmap (\(Function a r _) -> TFun a r) $ funs
           allTypes = args `M.union` funs' `M.union` vars
       (e', _) <- local (const $ Context ret) $
                   typecheck $ fmap (\n -> (n, allTypes M.! n)) e
