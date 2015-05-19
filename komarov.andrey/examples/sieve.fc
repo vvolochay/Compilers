@@ -1,0 +1,43 @@
+int count(bool* a, int n)
+{
+    int i;
+    i = 0;
+    int res;
+    res = 0;
+    while (i < n)
+    {
+        if (a[i]) { res = res + 1; } else {}
+        i = i + 1;
+    }
+    return res;
+}
+
+bool* sieve(int n)
+{
+    bool* res;
+    res = new bool[n];
+    int i;
+    i = 0;
+    while (i < n) { res[i] = true; i = i + 1; }
+    res[1] = false;
+    res[0] = false;
+    i = 2;
+    while (i < n)
+    {
+        if (res[i]) {
+            int j;
+            j = 2 * i;
+            while (j < n) { res[j] = false; j = j + i; }
+        } else {}
+        i = i + 1;
+    }
+    return res;
+}
+
+int main()
+{
+    int n; n = 1000;
+    bool* a; a = sieve(n);
+    int cnt; cnt = count(a, n);
+    return cnt;
+}
