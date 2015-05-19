@@ -83,7 +83,7 @@ compileF (Function _ _ (Inner s)) = do
 
 compileE :: Expr Binding -> Codegen [String]
 compileE (Var (Local off)) = return ["ldr r0, [fp, #-" ++ show (off * 4) ++"]", "push {r0}"]
-compileE (Var (Global name)) = return ["ldr r0, " ++ name, "push {r0}"]
+compileE (Var (Global name)) = return ["ldr r0, " ++ name, "ldr r0, [r0]", "push {r0}"]
 compileE (Var (Arg arg)) = return ["ldr r0, [fp, #" ++ show (arg * 4 + 8) ++ "]", "push {r0}"]
 compileE (Lit i) = return ["ldr r0, =" ++ show i, "push {r0}"]
 compileE (LitBool True) = return ["mov r0, #1", "push {r0}\t\t@ true"]
