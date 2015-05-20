@@ -72,7 +72,7 @@ compileP (Program funs vars) = do
       return $ ["", "@@@@@@@", name ++ ":"] ++ code
 
 compileF :: Function String -> Codegen [String]
-compileF (Function _ _ (Native code)) = return $ code ++ ["mov pc, lr"]
+compileF (Function _ _ (Native _ code)) = return $ code ++ ["mov pc, lr"]
 compileF (Function _ _ (Inner s)) = do
   let e = instantiate (return . Arg) (Global <$> s)
   resetMaxOffset

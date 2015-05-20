@@ -56,7 +56,7 @@ instance Typecheckable Program String where
     freeVars :: Function String -> [String]
     freeVars f = case body f of
       Inner s -> toList s
-      Native _ -> []
+      Native _ _ -> []
 
     ff :: Function String -> Typecheck (Function String)
     ff f@Function {body = Native{}} = return f

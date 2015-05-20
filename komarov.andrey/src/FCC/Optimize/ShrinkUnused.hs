@@ -28,6 +28,6 @@ upd :: M.Map String (Function String) -> S.Set String -> S.Set String
 upd funs reached = reached `S.union` S.unions [free f | (name, f) <- M.toList funs, name `S.member` reached]
 
 free :: Function String -> S.Set String
-free (Function _ _ (Native _)) = S.empty
+free (Function _ _ (Native _ _)) = S.empty
 free (Function _ _ (Inner s)) = S.fromList $ toList s
   

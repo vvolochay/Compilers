@@ -17,7 +17,7 @@ import qualified Data.Map as M
 
 data FunctionBody a
   = Inner (Scope Int Expr a)
-  | Native [String]
+  | Native String [String]
   deriving (Eq, Ord, Show)
 
 data Function a
