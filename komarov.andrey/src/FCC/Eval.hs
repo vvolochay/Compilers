@@ -3,8 +3,6 @@ module FCC.Eval (
   Value(..),
   ) where
 
-import FCC.Expr
-
 import Data.Int
 import qualified Data.Map as M
 
