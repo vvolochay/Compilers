@@ -31,7 +31,7 @@ defaultTimeout = 10000
 data EvalConfig = EvalConfig {
   ctxFunctions :: M.Map String (Function String),
   initialTimeout :: Int
-  }
+  } deriving (Eq, Ord, Show)
 
 newtype Evaluator r a = Evaluator {
   runEvaluator :: ExceptT () (StateT Context (ReaderT EvalConfig (Cont r))) a
@@ -95,7 +95,7 @@ eval k (LitBool b) = return $ VBool b
 --  eval k $ instantiate1 (Var v) s
 eval k Empty = return $ VVoid
 --eval k (Pop e) = tick >> eval k e
---eval k (Seq e1 e2) = tick >> eval k e1 >> eval k e2
+eval k (Seq e1 e2) = tick >> eval k e1 >> eval k e2
 eval k (Call (Var fname) args) = do
   f <- asks $ (M.lookup fname) . ctxFunctions
   case f of
@@ -110,11 +110,11 @@ eval k (Call _ _) = impossible
 --  case c of
 --   VBool b -> if b then eval k e else return VVoid
 --   _ -> impossible
---eval k (If cond thn els) = do
---  c <- eval k cond
---  case c of
---   VBool b -> if b then eval k thn else eval k els
---   _ -> impossible
+eval k (If cond thn els) = do
+  c <- eval k cond
+  case c of
+   VBool b -> if b then eval k thn else eval k els
+   _ -> impossible
 --eval k (Assign (Var v) src) = do
 --  src' <- eval k src
 --  modify $ \c -> c{bindings = M.insert v src' (bindings c)}
@@ -138,7 +138,7 @@ findPure (Program funs vars) = allPure where
   allPure = fix' S.empty (updPure funs)
 
 updPure :: M.Map String (Function String) -> S.Set String -> S.Set String
-updPure funs ctx = ctx `S.union` S.fromList [name | (name, f) <- M.toList funs, isPure ctx f]
+updPure funs ctx = ctx `S.union` S.fromList [name | (name, f) <- M.toList funs, isPure (S.insert name ctx) f]
 
 isPure :: S.Set String -> Function String -> Bool
 isPure _ (Function _ _ (Native name _)) = name `M.member` builtinsE

@@ -11,6 +11,7 @@ data Value
   | VInt Int32
   | VBool Bool
   | VArray (M.Map Int32 Value)
+    deriving (Eq, Ord, Show, Read)
 
 type Eval = [Value] -> Maybe Value
 

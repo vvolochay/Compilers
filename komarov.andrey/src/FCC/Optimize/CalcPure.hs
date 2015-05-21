@@ -56,8 +56,11 @@ opt e@(Call (Var fname) args) = do
   case ok of
    Nothing -> return e
    Just e' -> return e'
+opt (While (LitBool False) _) = return Empty
 opt e@(While cond body) = return e
-opt e@(If cond thn els) = return e
+--opt e@(If (LitBool True) thn _) = opt thn
+--opt e@(If (LitBool False) _ els) = opt els
+--opt e@(If cond thn els) = If <$> opt cond <*> opt thn <*> opt els
 opt e@(Assign dst src) = return e
 opt e@(Array a i) = return e
 opt (Return e) = Return <$> opt e
