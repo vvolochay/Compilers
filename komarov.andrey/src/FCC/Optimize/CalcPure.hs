@@ -14,6 +14,7 @@ import Bound
 import Control.Monad.Except
 import Control.Monad.State
 import Control.Monad.Reader
+import Control.Monad.Cont
 
 import qualified Data.Set as S
 import qualified Data.Map as M
@@ -28,22 +29,24 @@ data Context = Context {
 
 data ROContext = ROContext {
   pureFunctions :: S.Set String,
-  ctxFunctions :: M.Map String (Function String) }
+  ctxFunctions :: M.Map String (Function String)
+  }
 
 -- Использовать throwError для сообщения об успехе вместо
                -- какого-нибудь ContT - фу
-newtype Evaluator a = Evaluator {
-  runEvaluator :: ExceptT (Maybe Value) (StateT Context (Reader ROContext)) a
+newtype Evaluator r a = Evaluator {
+  runEvaluator :: ExceptT (Maybe Value) (ContT r (StateT Context (Reader ROContext))) a
   } deriving (Functor, Applicative, Monad,
-              MonadError (Maybe Value), MonadReader ROContext, MonadState Context)
+              MonadError (Maybe Value), MonadReader ROContext,
+              MonadState Context, MonadCont)
 
-tick :: Evaluator ()
+tick :: Evaluator r ()
 tick = do
   remain <- gets counter
   when (remain <= 0) $ throwError Nothing
   modify $ \c -> c{ counter = remain - 1 }
 
-fresh :: Evaluator String
+fresh :: Evaluator r String
 fresh = do
   var <- gets bound
   modify $ \c -> c{bound = var + 1}
@@ -56,6 +59,7 @@ defaultVal TVoid = VVoid
 defaultVal (TArray _) = VArray M.empty
 defaultVal (TFun _ _) = impossible
 
+{-
 call :: Function String -> [Value] -> Evaluator Value
 call (Function _ _ (Native name _)) args = do
   tick
@@ -64,45 +68,49 @@ call (Function _ _ (Native name _)) args = do
    Just res -> return res
 call (Function _ fargs (Inner s)) args = do
   _
+-}
 
-eval :: Expr String -> Evaluator Value
-eval (Var v) = gets $ (M.! v) . bindings
-eval (Lit i) = return $ VInt i
-eval (LitBool b) = return $ VBool b
-eval (Lam t s) = do
+call :: _
+call = _
+
+eval :: _ -> Expr String -> Evaluator r Value
+eval k (Var v) = gets $ (M.! v) . bindings
+eval k (Lit i) = return $ VInt i
+eval k (LitBool b) = return $ VBool b
+eval k (Lam t s) = do
   v <- fresh
   modify $ \c -> c{bindings = M.insert v (defaultVal t) (bindings c)}
-  eval $ instantiate1 (Var v) s
-eval Empty = return $ VVoid
-eval (Pop e) = tick >> eval e
-eval (Seq e1 e2) = tick >> eval e1 >> eval e2
-eval (Call (Var fname) args) = do
+  eval k $ instantiate1 (Var v) s
+eval k Empty = return $ VVoid
+eval k (Pop e) = tick >> eval k e
+eval k (Seq e1 e2) = tick >> eval k e1 >> eval k e2
+eval k (Call (Var fname) args) = do
   f <- asks $ (M.! fname) . ctxFunctions
-  args' <- mapM eval args
+  args' <- mapM (eval k) args
   call f args'
-eval (Call _ _) = impossible
-eval (Eq _ _) = impossible
-eval e@(While cond body) = do
-  c <- eval cond
+eval k (Call _ _) = impossible
+eval k (Eq _ _) = impossible
+eval k e@(While cond body) = do
+  c <- eval k cond
   case c of
-   VBool b -> if b then eval e else return VVoid
+   VBool b -> if b then eval k e else return VVoid
    _ -> impossible
-eval (If cond thn els) = do
-  c <- eval cond
+eval k (If cond thn els) = do
+  c <- eval k cond
   case c of
-   VBool b -> if b then eval thn else eval els
+   VBool b -> if b then eval k thn else eval k els
    _ -> impossible
-eval (Assign (Var v) src) = do
-  src' <- eval src
+eval k (Assign (Var v) src) = do
+  src' <- eval k src
   modify $ \c -> c{bindings = M.insert v src' (bindings c)}
   _
-eval (Assign (Array a i) src) = _ -- TODO ?????? :((((((
-eval (Assign _ _) = impossible
-eval (Array a i) = _
-eval (New _ _) = impossible
-eval (Return e) = do
-  e' <- eval e
-  return $ e'
+eval k (Assign (Array a i) src) = _ -- TODO ?????? :((((((
+eval k (Assign _ _) = impossible
+eval k (Array a i) = _
+eval k (New _ _) = impossible
+eval k (Return e) = do
+  e' <- eval k e
+  k e'
 
 findPure :: Program String -> S.Set String
 findPure (Program funs vars) = undefined where

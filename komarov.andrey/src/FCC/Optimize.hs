@@ -5,7 +5,7 @@ module FCC.Optimize (
 import FCC.Program
 
 import FCC.Optimize.ShrinkUnused
---import FCC.Optimize.CalcPure
+import FCC.Optimize.CalcPure
 
 import Data.Maybe
 
