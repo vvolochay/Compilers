@@ -12,13 +12,12 @@ import qualified Data.Map as M
 
 start = "_start"
 
-shrink :: Program String -> Maybe (Program String)
-shrink p@(Program funs vars) = if p == p' then Nothing else Just p' where
+shrink :: Program String -> Program String
+shrink p@(Program funs vars) = p' where
   used = fix' (S.singleton start) (upd funs)
   funs' = M.filterWithKey (\n _ -> n `S.member` used) funs
   vars' = M.filterWithKey (\n _ -> n `S.member` used) vars
   p' = Program funs' vars'
-
    
 fix' :: Eq a => a -> (a -> a) -> a
 fix' init mod = if new == init then init else fix' new mod where

@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module FCC.Optimize.CalcPure (
-
+  calcSubExprs,
   ) where
 
 import FCC.Expr
@@ -16,8 +16,11 @@ import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Cont
 
-optP :: Program String -> Maybe (Program String)
-optP p@(Program funs vars) = Nothing where
+calcSubExprs :: Program String -> Program String
+calcSubExprs = optP
+
+optP :: Program String -> Program String
+optP p@(Program funs vars) = p where
 
 optF :: Function String -> Function String
 optF f@(Function _ _ (Native{})) = f
