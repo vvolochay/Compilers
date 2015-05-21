@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module FCC.Evaluator (
-  calc,
+  calc, calcF,
   EvalConfig(..),
   config,
   ) where
@@ -46,6 +46,11 @@ runE s r e = runCont (runReaderT (runStateT (runExceptT $ runEvaluator e) s) r) 
 
 calc :: EvalConfig -> Expr String -> Maybe Value
 calc cfg e = case runE (Context M.empty (initialTimeout cfg) 0) cfg (callCC $ \k -> eval k e) of
+  Left _ -> Nothing
+  Right a -> Just a
+
+calcF :: EvalConfig -> Function String -> [Value] -> Maybe Value
+calcF cfg f args = case runE (Context M.empty (initialTimeout cfg) 0) cfg (call f args) of
   Left _ -> Nothing
   Right a -> Just a
 
@@ -129,7 +134,7 @@ config p@(Program funs _) = EvalConfig puM defaultTimeout where
   pu = findPure p
 
 findPure :: Program String -> S.Set String
-findPure (Program funs vars) = undefined where
+findPure (Program funs vars) = allPure where
   allPure = fix' S.empty (updPure funs)
 
 updPure :: M.Map String (Function String) -> S.Set String -> S.Set String
