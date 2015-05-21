@@ -18,6 +18,10 @@ liftI2B :: (Int32 -> Int32 -> Bool) -> Eval
 liftI2B op [VInt i1, VInt i2] = Just $ VBool $ i1 `op` i2
 liftI2B _ _ = Nothing
 
+liftB :: (Bool -> Bool) -> Eval
+liftB op [VBool b] = Just $ VBool $ op b
+liftB _ _ = Nothing
+
 builtinsE :: M.Map String Eval
 builtinsE = M.fromList $ [
   ("_new", new), -- какая-то скользкая дорожка. не доверяю вычислятору new
@@ -27,6 +31,8 @@ builtinsE = M.fromList $ [
   ("_builtin_less", liftI2B (<)),
   ("_builtin_eq_int", liftI2B (==)),
   ("_builtin_eq_bool", liftI2B (==)),
-  ("_builtin_eq_ptr", liftI2B (==))
+  ("_builtin_eq_ptr", liftI2B (==)),
+  ("_builtin_not", liftB (not))
+
  ]
   

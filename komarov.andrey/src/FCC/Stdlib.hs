@@ -28,6 +28,14 @@ new = native "_new" [TVoid] (TArray TVoid) ["ldr r0, =0", "pop {r1}", "add r1, r
                                      "ldr r3, =33", "ldr r4, =0", "ldr r5, =0",
                                      "ldr r7, =192", "swi 0", "push {r0}"]
 
+getchar :: (String, Function String)
+getchar = native "getchar" [] TInt ["ldr r7, =3", "ldr r0, =0", "push {r0}", "mov r1, sp", "ldr r2, =1", "swi 0",
+                                    "ldr r2, =0", "ldr r1, =-1", "cmp r0, r2", "strle r1, [sp]"]
+
+putchar :: (String, Function String)
+putchar = native "putchar" [TInt] TInt ["ldr r7, =4", "ldr r0, =1", "mov r1, sp", "ldr r2, =1", "swi 0",
+                                        "ldr r0, [sp]"]
+
 builtins :: [(String, Function String)]
 builtins = [
   native "_builtin_add" [TInt, TInt] TInt ["pop {r0}", "pop {r1}", "add r0, r0, r1", "push {r0}"],
@@ -35,7 +43,10 @@ builtins = [
   native "_builtin_mul" [TInt, TInt] TInt ["pop {r0}", "pop {r1}", "mul r2, r0, r1", "push {r2}"],
   native "_builtin_less" [TInt, TInt] TBool ["pop {r1, r2}", "cmp r1, r2", "movlt r0, #1", "movge r0, #0", "push {r0}"],
   native "_builtin_eq_int" [TInt, TInt] TBool ["pop {r1, r2}", "teq r1, r2", "moveq r0, #1", "movne r0, #0", "push {r0}"],
+  native "_builtin_not" [TBool] TBool ["pop {r0}", "ldr r1, =1", "sub r0, r1, r0", "push {r0}"],
   ("_start", start),
+  getchar,
+  putchar,
   exit,
   new
  ]
