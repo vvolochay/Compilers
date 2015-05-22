@@ -12,16 +12,22 @@ import Bound
 
 import Data.List (elemIndex)
 import Data.Maybe (fromMaybe)
-import Control.Monad.Reader
+import Control.Monad.RWS
 
 import qualified Data.Map as M
 
 calcSubExprs :: Program String -> Program String
-calcSubExprs p = runReader (runOptimizer $ optP p) (config p)
+calcSubExprs p = fst $ evalRWS (runOptimizer $ optP p) (config p) 0
 
 newtype Optimizer a = Optimizer {
-  runOptimizer :: Reader EvalConfig a
-  } deriving (Functor, Applicative, Monad, MonadReader EvalConfig)
+  runOptimizer :: RWS EvalConfig () Int a
+  } deriving (Functor, Applicative, Monad, MonadReader EvalConfig, MonadState Int)
+
+fresh :: Optimizer String
+fresh = do
+  n <- get
+  put $ n + 1
+  return $ "_opt_t_vat_" ++ show n
 
 optP :: Program String -> Optimizer (Program String)
 optP p@(Program funs vars) = do
@@ -41,6 +47,11 @@ opt :: Expr String -> Optimizer (Expr String)
 opt e@(Var _) = return e
 opt e@(Lit _) = return e
 opt e@(LitBool _) = return e
+opt (Lam t s) = do
+  name <- fresh
+  let e = instantiate1 (Var name) s
+  e' <- opt e
+  return $ Lam t $ abstract1 name e'
 opt Empty = return Empty
 opt (Pop e) = Pop <$> opt e
 opt (Seq Empty e) = opt e
@@ -54,13 +65,13 @@ opt e@(Call (Var fname) args) = do
         v <- calcF cfg f args
         v2e v
   case ok of
-   Nothing -> return e
+   Nothing -> Call (Var fname) <$> forM args opt
    Just e' -> return e'
 opt (While (LitBool False) _) = return Empty
-opt e@(While cond body) = return e
---opt e@(If (LitBool True) thn _) = opt thn
---opt e@(If (LitBool False) _ els) = opt els
---opt e@(If cond thn els) = If <$> opt cond <*> opt thn <*> opt els
+opt e@(While cond body) = While <$> opt cond <*> opt body
+opt e@(If (LitBool True) thn _) = opt thn
+opt e@(If (LitBool False) _ els) = opt els
+opt e@(If cond thn els) = If <$> opt cond <*> opt thn <*> opt els
 opt e@(Assign dst src) = return e
 opt e@(Array a i) = return e
 opt (Return e) = Return <$> opt e

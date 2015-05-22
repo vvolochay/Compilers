@@ -76,7 +76,7 @@ defaultVal (TFun _ _) = impossible
 call :: Function String -> [Value] -> Evaluator r Value
 call (Function _ _ (Native name _)) args = do
   tick
-  case (builtinsE M.! name) args of
+  case do {ev <- M.lookup name builtinsE; ev args } of
    Nothing -> throwError ()
    Just res -> return res
 call (Function fargs _ (Inner s)) args = do
@@ -86,7 +86,11 @@ call (Function fargs _ (Inner s)) args = do
   callCC $ \k -> eval k $ instantiate (Var . (names !!)) s
 
 eval :: (Value -> Evaluator r Value) -> Expr String -> Evaluator r Value
-eval k (Var v) = gets $ (M.! v) . bindings
+eval k (Var v) = do
+  b <- gets bindings
+  case M.lookup v b of
+   Nothing -> throwError ()
+   Just val -> return val
 eval k (Lit i) = return $ VInt i
 eval k (LitBool b) = return $ VBool b
 --eval k (Lam t s) = do
