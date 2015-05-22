@@ -68,12 +68,12 @@ opt e@(Call (Var fname) args) = do
    Nothing -> Call (Var fname) <$> forM args opt
    Just e' -> return e'
 opt (While (LitBool False) _) = return Empty
-opt e@(While cond body) = While <$> opt cond <*> opt body
-opt e@(If (LitBool True) thn _) = opt thn
-opt e@(If (LitBool False) _ els) = opt els
-opt e@(If cond thn els) = If <$> opt cond <*> opt thn <*> opt els
-opt e@(Assign dst src) = return e
-opt e@(Array a i) = return e
+opt (While cond body) = While <$> opt cond <*> opt body
+opt (If (LitBool True) thn _) = opt thn
+opt (If (LitBool False) _ els) = opt els
+opt (If cond thn els) = If <$> opt cond <*> opt thn <*> opt els
+opt (Assign dst src) = Assign <$> opt dst <*> opt src
+opt (Array a i) = Array <$> opt a <*> opt i
 opt (Return e) = Return <$> opt e
 opt e = return e
 
