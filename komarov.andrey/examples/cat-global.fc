@@ -1,0 +1,9 @@
+int c;
+int main() {
+	c = getchar();
+	while (c != 0-1) {
+		putchar(c);
+		c = getchar();
+	}
+	return 0;
+}
