@@ -12,3 +12,7 @@ int summ(int n)
     }
     return sum;
 }
+
+int main() {
+    return summ(100);
+}

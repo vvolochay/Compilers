@@ -24,7 +24,9 @@ import qualified Data.Map as M
 data Context = Context {
   bindings :: M.Map String Value,
   counter :: Int,
-  bound :: Int }
+  bound :: Int
+  } deriving (Eq, Ord, Show, Read)
+
 
 defaultTimeout = 10000
 
@@ -93,12 +95,12 @@ eval k (Var v) = do
    Just val -> return val
 eval k (Lit i) = return $ VInt i
 eval k (LitBool b) = return $ VBool b
---eval k (Lam t s) = do
---  v <- fresh
---  modify $ \c -> c{bindings = M.insert v (defaultVal t) (bindings c)}
---  eval k $ instantiate1 (Var v) s
+eval k (Lam t s) = do
+  v <- fresh
+  modify $ \c -> c{bindings = M.insert v (defaultVal t) (bindings c)}
+  eval k $ instantiate1 (Var v) s
 eval k Empty = return $ VVoid
---eval k (Pop e) = tick >> eval k e
+eval k (Pop e) = tick >> eval k e
 eval k (Seq e1 e2) = tick >> eval k e1 >> eval k e2
 eval k (Call (Var fname) args) = do
   f <- asks $ (M.lookup fname) . ctxFunctions
@@ -109,20 +111,21 @@ eval k (Call (Var fname) args) = do
      call f' args'
 eval k (Call _ _) = impossible
 --eval k (Eq _ _) = impossible
---eval k e@(While cond body) = do
---  c <- eval k cond
---  case c of
---   VBool b -> if b then eval k e else return VVoid
---   _ -> impossible
+eval k e@(While cond body) = do
+  g <- get
+  c <- eval k cond
+  case c of
+   VBool b -> if b then eval k body >> eval k e else return VVoid
+   _ -> impossible
 eval k (If cond thn els) = do
   c <- eval k cond
   case c of
    VBool b -> if b then eval k thn else eval k els
    _ -> impossible
---eval k (Assign (Var v) src) = do
---  src' <- eval k src
---  modify $ \c -> c{bindings = M.insert v src' (bindings c)}
---  _
+eval k (Assign (Var v) src) = do
+  src' <- eval k src
+  modify $ \c -> c{bindings = M.insert v src' (bindings c)}
+  return src'
 --eval k (Assign (Array a i) src) = _ -- TODO ?????? :((((((
 --eval k (Assign _ _) = impossible
 --eval k (Array a i) = _
