@@ -1,0 +1,11 @@
+int f() {
+    if (true) {
+        return 10;
+    } else {
+        return 20;
+    }
+}
+
+int main() {
+    return f();
+}
